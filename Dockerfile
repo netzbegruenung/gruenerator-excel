@@ -15,6 +15,13 @@ WORKDIR /app
 # Erst die Manifeste, damit der Layer mit den Abhängigkeiten nur bei echten
 # Dependency-Änderungen neu gebaut wird.
 COPY package.json package-lock.json ./
+# `npm ci` führt das `prepare`-Skript aus, und das liegt unter scripts/.
+# Ohne diese Zeile bricht der Build mit "Cannot find module
+# /app/scripts/install-githooks.mjs" ab — das Skript selbst schaltet sich
+# ausserhalb eines Git-Checkouts ab, es muss nur da sein. Bewusst nur diese
+# eine Datei statt des ganzen Ordners: sonst verfiele der Abhängigkeits-Layer
+# bei jeder Änderung an irgendeinem Skript.
+COPY scripts/install-githooks.mjs ./scripts/
 RUN npm ci
 
 COPY . .
