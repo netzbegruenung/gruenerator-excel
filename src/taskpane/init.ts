@@ -19,6 +19,8 @@ import {
   purgeForeignCredentials,
   purgeForeignModelCatalogs,
 } from "../gruenerator/gateway.js";
+import { purgeForeignGateways } from "../gruenerator/gateway-purge.js";
+import { GRUENERATOR_GATEWAY_NAME } from "../gruenerator/config.js";
 import type { SessionData } from "../storage/local/types.js";
 
 import { createOfficeStreamFn } from "../auth/stream-proxy.js";
@@ -247,6 +249,17 @@ export async function initTaskpane(opts: {
     gatewayProviderName = (await ensureGruenratorGateway(customProviders)).providerName;
   } catch (error) {
     console.warn("[gruenerator] Gateway konnte nicht provisioniert werden:", error);
+  }
+
+  // Danach, nicht davor: erst muss unser Gateway sicher stehen, dann darf alles
+  // andere weg. Sonst bliebe im Fehlerfall gar keine Modellquelle uebrig.
+  try {
+    const removed = await purgeForeignGateways(customProviders, GRUENERATOR_GATEWAY_NAME);
+    if (removed > 0) {
+      console.warn(`[gruenerator] ${removed} fremde(s) Gateway entfernt.`);
+    }
+  } catch (error) {
+    console.warn("[gruenerator] Fremde Gateways konnten nicht entfernt werden:", error);
   }
 
   try {

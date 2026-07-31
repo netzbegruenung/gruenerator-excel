@@ -45,12 +45,31 @@ type UserLikeMessage = AgentMessage & {
  * bump that raised Opus 4.6 from 200k → 1M). Falls back to the
  * persisted model if the runtime no longer has it. Custom and dynamically
  * discovered providers are already part of the same runtime catalogue.
+ *
+ * Zweite Stufe fuer umbenannte Anbieter: eine gespeicherte Sitzung haelt das
+ * ganze Modellobjekt fest, **einschliesslich `baseUrl`**. Trifft die Suche
+ * ueber (Anbieter, Kennung) daneben — etwa weil der Anbieter inzwischen anders
+ * heisst —, dann lieferte der Rueckfall auf das gespeicherte Objekt eine
+ * Adresse, die es nicht mehr gibt. Die Anfragen liefen dann weiter an den
+ * alten Endpunkt, waehrend jede Anzeige den neuen zeigte. Ist die
+ * Modellkennung im aktuellen Katalog eindeutig, gewinnt deshalb der lebende
+ * Eintrag.
  */
 function refreshPersistedModel(
   modelsRuntime: Models,
   persisted: PersistedSessionModel,
 ): PersistedSessionModel {
-  return modelsRuntime.getModel(persisted.provider, persisted.id) ?? persisted;
+  const exact = modelsRuntime.getModel(persisted.provider, persisted.id);
+  if (exact) return exact;
+
+  const candidates = modelsRuntime
+    .getModels()
+    .filter((model) => model.id === persisted.id && model.api === persisted.api);
+  // Nur bei Eindeutigkeit: bei mehreren Treffern waere die Wahl geraten, und
+  // ein falscher Anbieter ist nicht besser als ein veralteter.
+  if (candidates.length === 1) return candidates[0] ?? persisted;
+
+  return persisted;
 }
 
 function hasAssistantMessage(messages: AgentMessage[]): boolean {
