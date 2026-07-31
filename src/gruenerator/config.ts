@@ -5,16 +5,18 @@
  * sich per OAuth einloggen. Hier gibt es genau einen vorkonfigurierten
  * OpenAI-kompatiblen Gateway; einzugeben ist nur noch der Zugangsschlüssel.
  *
- * ENDPOINT ist bewusst eine einzelne Konstante: heute zeigt sie auf verdigado
- * (über den Dev-Proxy erreichbar, weil dessen nginx den CORS-Preflight mit 401
- * beantwortet), später auf den eigenen OpenAI-kompatiblen Endpoint des
- * Grünerator-Backends. Der Umzug ist dann eine Zeile.
+ * Der Endpoint ist das Grünerator-Backend, nicht mehr verdigado direkt. Damit
+ * entfällt der lokale CORS-Proxy: dort läuft `cors()` als erste Middleware und
+ * beantwortet den Preflight, bevor die Authentifizierung greift — anders als
+ * der nginx vor LiteLLM, der auf `OPTIONS` mit 401 antwortet. Der Schlüssel ist
+ * ein Grünerator-API-Key mit Scope `chat:completions`, kein Anbieter-Schlüssel.
  */
 
 /** Fester Anzeigename — dient zugleich als Wiedererkennung beim Provisionieren. */
 export const GRUENERATOR_GATEWAY_NAME = "Grünerator";
 
-export const GRUENERATOR_ENDPOINT_URL = "https://litellm.netzbegruenung.verdigado.net/v1";
+/** Für lokale Entwicklung gegen das eigene Backend auf `https://localhost:3001/api/v1` zeigen. */
+export const GRUENERATOR_ENDPOINT_URL = "https://gruenerator.eu/api/v1";
 
 /**
  * Gemma 4 31B (ctx128k). Im Tool-Loop-Test gegen gefakte Excel-Tools: 3 Runden,

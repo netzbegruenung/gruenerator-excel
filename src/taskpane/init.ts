@@ -12,7 +12,7 @@ function isTaskpaneInitPayloadShape(value: DynamicValue): value is DynamicObject
 import { html, render } from "lit";
 import { Agent } from "@earendil-works/pi-agent-core";
 import { getAppStorage } from "../storage/local/app-storage.js";
-import { ensureGruenratorGateway, enableInterimProxy } from "../gruenerator/gateway.js";
+import { ensureGruenratorGateway } from "../gruenerator/gateway.js";
 import type { SessionData } from "../storage/local/types.js";
 
 import { createOfficeStreamFn } from "../auth/stream-proxy.js";
@@ -233,7 +233,6 @@ export async function initTaskpane(opts: {
   // die Einstellungen zeigen den Hinweis auf den Zugangsschlüssel.
   try {
     await ensureGruenratorGateway(customProviders);
-    await enableInterimProxy(settings);
   } catch (error) {
     console.warn("[gruenerator] Gateway konnte nicht provisioniert werden:", error);
   }
