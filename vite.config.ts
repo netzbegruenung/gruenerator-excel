@@ -97,6 +97,25 @@ function stripBrowserHeaders(proxy: ProxyServerLike) {
   });
 }
 
+/**
+ * Entfernt nur `Origin`/`Referer` — für das Grünerator-Backend.
+ *
+ * Zeigt der Proxy auf eine entfernte Instanz (beta/prod), sieht deren CORS-Prüfung
+ * sonst `https://localhost:3141`. Diese Herkunft steht nur in der Dev-Liste des
+ * Backends, und die ist bei `NODE_ENV=production` leer — die Antwort wäre
+ * „Not allowed by CORS". Ohne `Origin` gilt der Aufruf als serverseitig und
+ * passiert die Prüfung; im Browser bleibt alles same-origin über :3141.
+ *
+ * Bewusst nicht `stripBrowserHeaders`: das räumt auch `user-agent` und die
+ * `sec-fetch-*`-Header ab, die unser eigenes Backend protokolliert.
+ */
+function stripOriginOnly(proxy: ProxyServerLike) {
+  proxy.on("proxyReq", (proxyReq) => {
+    proxyReq.removeHeader("origin");
+    proxyReq.removeHeader("referer");
+  });
+}
+
 function escapeRegExp(value: string): string {
   return value.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
 }
@@ -241,6 +260,7 @@ export default defineConfig({
         target: process.env.VITE_GRUENERATOR_API || "http://localhost:3001",
         changeOrigin: true,
         secure: false,
+        configure: stripOriginOnly,
       },
       // OAuth token endpoints. Keep longer/more-specific prefixes before shorter ones.
       "/oauth-proxy/anthropic-platform": proxyEntry("https://platform.claude.com", "/oauth-proxy/anthropic-platform"),
@@ -287,6 +307,12 @@ export default defineConfig({
       input: {
         taskpane: "src/taskpane.html",
         "ui-gallery": "src/ui-gallery.html",
+        // Beide Seiten des Anmeldedialogs. Sie müssen als Vite-Einstiege
+        // gebaut werden und nicht als statische Dateien unter public/ liegen:
+        // die Weiterleitungsregel (isAllowedAuthorizationTarget) soll nur
+        // einmal existieren und geprüft werden, statt als Kopie im HTML.
+        "oauth-start": "src/oauth-start.html",
+        "oauth-callback": "src/oauth-callback.html",
       },
       // Externalize node:* imports (Rollup can't bundle them for the browser).
       // Note: do NOT externalize regular deps (e.g. @smithy/*). If they leak

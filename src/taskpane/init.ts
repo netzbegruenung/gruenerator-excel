@@ -20,6 +20,7 @@ import {
   purgeForeignModelCatalogs,
 } from "../gruenerator/gateway.js";
 import { purgeForeignGateways } from "../gruenerator/gateway-purge.js";
+import { refreshGatewayToken } from "../gruenerator/oauth-integration.js";
 import { GRUENERATOR_GATEWAY_NAME } from "../gruenerator/config.js";
 import type { SessionData } from "../storage/local/types.js";
 
@@ -249,6 +250,20 @@ export async function initTaskpane(opts: {
     gatewayProviderName = (await ensureGruenratorGateway(customProviders)).providerName;
   } catch (error) {
     console.warn("[gruenerator] Gateway konnte nicht provisioniert werden:", error);
+  }
+
+  // Token erneuern, solange niemand wartet.
+  //
+  // Ein Zugriffstoken lebt eine Stunde, das Taskpane oft laenger. Ohne diesen
+  // Lauf faellt die erste Anfrage nach Ablauf mit 401 aus — und zwar mitten in
+  // einem Auftrag, wo die Meldung am wenigsten hilft. Nicht angemeldet oder
+  // Erneuerung gescheitert heisst hier bewusst nur: nichts tun. Ein
+  // hinterlegter Zugangsschluessel ist der zweite gueltige Weg und darf davon
+  // nicht angetastet werden.
+  try {
+    await refreshGatewayToken(customProviders, settings);
+  } catch (error) {
+    console.warn("[gruenerator] Token konnte beim Start nicht erneuert werden:", error);
   }
 
   // Danach, nicht davor: erst muss unser Gateway sicher stehen, dann darf alles

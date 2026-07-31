@@ -41,6 +41,11 @@ import {
   findGruenratorGateway,
   setGruenratorApiKey,
 } from "../../../gruenerator/gateway.js";
+import {
+  isSignedIn,
+  signInWithGruenerator,
+  signOutFromGruenerator,
+} from "../../../gruenerator/oauth-integration.js";
 
 type CalloutTone = "info" | "warn" | "success";
 
@@ -151,6 +156,15 @@ export function createGruenratorPage(): SettingsShellPage {
         statusSlot.replaceChildren(createCallout(state.tone, state.icon, state.message));
       };
 
+      /**
+       * Angemeldet über das Grünerator-Konto?
+       *
+       * Wird gehalten statt bei jeder Anzeige neu gefragt: `syncButtons` läuft
+       * synchron, und ein `await` mitten in der Beschriftung würde die Knöpfe
+       * für einen Wimpernschlag falsch zeigen.
+       */
+      let signedIn = await isSignedIn(storage.settings);
+
       const showStoredKeyStatus = (): void => {
         // Abweichung zuerst: sie erklaert, warum ein gruener Test und ein
         // fehlschlagender Chat zusammenpassen koennen.
@@ -163,6 +177,14 @@ export function createGruenratorPage(): SettingsShellPage {
               model: effectiveModel(),
             }),
           });
+          return;
+        }
+
+        // Die Anmeldung geht der Schlüsselanzeige vor: bei angemeldetem Konto
+        // steht im Schlüsselfeld das Zugriffstoken, und „Schlüssel hinterlegt"
+        // wäre dann die irreführendere von zwei wahren Aussagen.
+        if (signedIn) {
+          setStatus({ tone: "success", icon: "✓", message: t("gruenerator.access.signed_in") });
           return;
         }
 
@@ -316,7 +338,70 @@ export function createGruenratorPage(): SettingsShellPage {
           });
       });
 
-      actions.append(save, test, remove, repair);
+      // ── Anmeldung über das Grünerator-Konto ───────────────────────────────
+      // Der Weg ohne Schlüsselausgabe von Hand: das Add-in holt sich ein Token
+      // über OAuth. Beide Wege bestehen nebeneinander — das Backend nimmt seit
+      // `addinAuth.ts` Schlüssel und Token an derselben Tür an.
+      const account = createButton("");
+
+      const syncAccountButton = (): void => {
+        account.textContent = signedIn
+          ? t("gruenerator.access.sign_out")
+          : t("gruenerator.access.sign_in");
+      };
+      syncAccountButton();
+
+      account.addEventListener("click", () => {
+        account.disabled = true;
+
+        const finish = (): void => {
+          account.disabled = false;
+          syncAccountButton();
+          syncButtons();
+          showStoredKeyStatus();
+        };
+
+        if (signedIn) {
+          void signOutFromGruenerator(storage.customProviders, storage.settings)
+            .then(async () => {
+              signedIn = false;
+              await readGateway();
+              showToast(t("gruenerator.access.signed_out"));
+            })
+            .catch((error: DynamicValue) => {
+              console.warn("[gruenerator] Abmeldung fehlgeschlagen:", error);
+              showToast(t("gruenerator.access.sign_out_failed"));
+            })
+            .finally(finish);
+          return;
+        }
+
+        account.textContent = t("gruenerator.access.signing_in");
+        void signInWithGruenerator(storage.customProviders, storage.settings)
+          .then(async (result) => {
+            if (!result.ok) {
+              // Stufe mitnennen: „abgebrochen" und „Server lehnt den Scope ab"
+              // sehen sonst gleich aus, führen aber zu ganz verschiedenen
+              // nächsten Schritten.
+              showToast(
+                t("gruenerator.access.sign_in_failed", {
+                  detail: `${result.stage}: ${result.detail}`,
+                }),
+              );
+              return;
+            }
+            signedIn = true;
+            await readGateway();
+            showToast(t("gruenerator.access.signed_in_toast"));
+          })
+          .catch((error: DynamicValue) => {
+            console.warn("[gruenerator] Anmeldung fehlgeschlagen:", error);
+            showToast(t("gruenerator.access.sign_in_failed", { detail: "unerwarteter Fehler" }));
+          })
+          .finally(finish);
+      });
+
+      actions.append(account, save, test, remove, repair);
 
       // ── Tatsaechlich benutzte Werte ───────────────────────────────────────
       // Aus dem gespeicherten Gateway, nicht aus der Konfiguration: bei jedem

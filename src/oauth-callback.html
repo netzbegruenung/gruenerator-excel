@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Grünerator — Anmeldung abgeschlossen</title>
+  <link rel="icon" href="/assets/icon-32.png" type="image/png" />
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #fff;
+      color: #1a1a1a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+      text-align: center;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #111; color: #e5e5e5; }
+    }
+    p { font-size: 15px; line-height: 1.6; max-width: 34ch; }
+  </style>
+</head>
+<body>
+  <p id="message">Anmeldung wird abgeschlossen …</p>
+  <script type="module" src="./oauth-callback.ts"></script>
+</body>
+</html>
