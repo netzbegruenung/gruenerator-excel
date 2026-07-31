@@ -1,3 +1,5 @@
+import type { Agent } from "@earendil-works/pi-agent-core";
+
 /**
  * Slash command system — types and registry.
  */
@@ -51,3 +53,6 @@ class CommandRegistry {
 }
 
 export const commandRegistry = new CommandRegistry();
+
+/** Liefert den Agent der aktiven Sitzung, oder null. */
+export type ActiveAgentProvider = () => Agent | null;

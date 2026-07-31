@@ -43,8 +43,9 @@ function isBuiltinsRegistryTestPayloadShape(value: DynamicValue): value is Dynam
 void test("builtins registry wires /addons, /experimental, /extensions, /tools, and /files command registration", async () => {
   const source = await readFile(new URL("../src/commands/builtins/index.ts", import.meta.url), "utf8");
 
-  assert.match(source, /createModelCommands/);
-  assert.match(source, /openModelSelector:\s*context\.openModelSelector/);
+  // Dieser Fork entscheidet das Modell; eine Auswahl gibt es bewusst nicht.
+  assert.doesNotMatch(source, /createModelCommands/);
+  assert.doesNotMatch(source, /openModelSelector/);
 
   assert.match(source, /createAddonsCommands/);
   assert.match(source, /\.\.\.createAddonsCommands\(context\)/);
@@ -332,7 +333,7 @@ void test("provider and experimental overlays are aliases into settings sections
   const providerSource = await readFile(new URL("../src/commands/builtins/provider-overlay.ts", import.meta.url), "utf8");
   const experimentalSource = await readFile(new URL("../src/commands/builtins/experimental-overlay.ts", import.meta.url), "utf8");
 
-  assert.match(providerSource, /openSettings\("providers"\)/);
+  assert.match(providerSource, /openSettings\("gruenerator"\)/);
   assert.match(experimentalSource, /openSettings\("experimental"\)/);
   assert.match(experimentalSource, /buildExperimentalFeatureContent/);
   assert.match(experimentalSource, /createToggleRow/);

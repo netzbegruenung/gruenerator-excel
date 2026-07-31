@@ -12,7 +12,11 @@ function isTaskpaneInitPayloadShape(value: DynamicValue): value is DynamicObject
 import { html, render } from "lit";
 import { Agent } from "@earendil-works/pi-agent-core";
 import { getAppStorage } from "../storage/local/app-storage.js";
-import { ensureGruenratorGateway, disableLegacyProxy } from "../gruenerator/gateway.js";
+import {
+  ensureGruenratorGateway,
+  disableLegacyProxy,
+  purgeForeignCredentials,
+} from "../gruenerator/gateway.js";
 import type { SessionData } from "../storage/local/types.js";
 
 import { createOfficeStreamFn } from "../auth/stream-proxy.js";
@@ -81,7 +85,6 @@ import {
 import {
   getStoredModelSwitchBehavior,
   setStoredModelSwitchBehavior,
-  shouldForkModelSwitch,
   type ModelSwitchBehavior,
 } from "../models/switch-behavior.js";
 import { getResolvedConventions } from "../conventions/store.js";
@@ -124,7 +127,6 @@ import { createProxyBanner } from "../ui/proxy-banner.js";
 import { setActiveProviders } from "../models/active-providers.js";
 import { BrowserModelRuntime } from "../models/browser-model-runtime.js";
 import { promptForProviderConnection } from "../ui/api-key-dialog.js";
-import { openModelSelectorDialog } from "../ui/model-selector-dialog.js";
 import { getCurrentSpreadsheetHost, type SpreadsheetHostKind } from "../host/index.js";
 import { createWorkbookCoordinator } from "../workbook/coordinator.js";
 import { formatWorkbookLabel, type WorkbookContext } from "../workbook/context.js";
@@ -234,6 +236,7 @@ export async function initTaskpane(opts: {
   try {
     await ensureGruenratorGateway(customProviders);
     await disableLegacyProxy(settings);
+    await purgeForeignCredentials(providerKeys, settings);
   } catch (error) {
     console.warn("[gruenerator] Gateway konnte nicht provisioniert werden:", error);
   }
@@ -1694,92 +1697,8 @@ export async function initTaskpane(opts: {
     },
   });
 
-  const applyModelSelection = async (runtimeId: string, nextModel: RuntimeModel): Promise<void> => {
-    const runtime = runtimeManager.getRuntime(runtimeId);
-    if (!runtime) {
-      showToast(t("init.sessionNotFound"));
-      return;
-    }
-
-    const currentModel = runtime.agent.state.model;
-    const sameIdentity = currentModel.provider === nextModel.provider
-      && currentModel.id === nextModel.id;
-    if (sameIdentity && areRuntimeModelsEquivalent(currentModel, nextModel)) {
-      return;
-    }
-
-    if (runtime.agent.state.isStreaming || runtime.actionQueue.isBusy()) {
-      showToast(t("init.waitBeforeChangingModels"));
-      return;
-    }
-
-    if (sameIdentity) {
-      runtime.agent.state.model = nextModel;
-      document.dispatchEvent(new CustomEvent("pi:model-changed"));
-      document.dispatchEvent(new CustomEvent("pi:status-update"));
-      requestAnimationFrame(() => sidebar.requestUpdate());
-      return;
-    }
-
-    const hasMessages = runtime.agent.state.messages.length > 0;
-    const behavior = getModelSwitchBehavior();
-
-    if (!shouldForkModelSwitch({ behavior, hasMessages })) {
-      runtime.agent.state.model = nextModel;
-      document.dispatchEvent(new CustomEvent("pi:model-changed"));
-      document.dispatchEvent(new CustomEvent("pi:status-update"));
-      requestAnimationFrame(() => sidebar.requestUpdate());
-      return;
-    }
-
-    const sourceTitle = resolveRuntimeTabTitle(runtimeId, runtime);
-    const modelForkTitle = `${sourceTitle} (${nextModel.id})`;
-
-    await cloneRuntimeToNewTab({
-      sourceRuntime: runtime,
-      targetModel: nextModel,
-      targetTitle: modelForkTitle,
-    });
-
-    showToast(t("init.openedInNewTab", { title: modelForkTitle }));
-  };
-
-  const openModelSelector = (): void => {
-    const activeRuntime = getActiveRuntime();
-    if (!activeRuntime) {
-      showToast(t("init.noActiveSession"));
-      return;
-    }
-
-    const targetRuntimeId = activeRuntime.runtimeId;
-    const currentModel = activeRuntime.agent.state.model;
-
-    void (async () => {
-      try {
-        await refreshConfiguredProviders();
-      } catch (error) {
-        console.warn("[auth] Failed to refresh providers before opening model selector:", error);
-      }
-
-      closeStatusPopover();
-
-      openModelSelectorDialog({
-        models: modelRuntime.models,
-        currentModel,
-        onSelect: (model) => {
-          void applyModelSelection(targetRuntimeId, model);
-        },
-      });
-
-      void refreshRuntimeModels().catch((error: DynamicValue) => {
-        console.warn("[models] Model refresh from selector failed:", error);
-      });
-    })();
-  };
-
   registerBuiltins({
     getActiveAgent,
-    openModelSelector,
     renameActiveSession: async (title: string) => {
       const activeRuntime = getActiveRuntime();
       if (!activeRuntime) {
@@ -1827,8 +1746,6 @@ export async function initTaskpane(opts: {
       void showFilesWorkspaceDialog();
     },
   });
-
-  // Slash commands chosen from the popup menu dispatch this event.
   const onCommandRun: EventListener = (event) => {
     if (!(event instanceof CustomEvent)) return;
     if (!isTaskpaneInitPayloadShape(event.detail)) return;
@@ -2176,12 +2093,6 @@ export async function initTaskpane(opts: {
     const el = target;
 
     if (el.closest(".pi-status-popover")) {
-      return;
-    }
-
-    // Model picker
-    if (el.closest(".pi-status-model")) {
-      openModelSelector();
       return;
     }
 

@@ -5,7 +5,7 @@
 import type { Agent, AgentMessage } from "@earendil-works/pi-agent-core";
 
 import type { SlashCommand } from "../types.js";
-import type { ActiveAgentProvider } from "./model.js";
+import type { ActiveAgentProvider } from "../types.js";
 import { showToast } from "../../ui/toast.js";
 import { extractTextBlocks } from "../../utils/content.js";
 import { t } from "../../language/index.js";

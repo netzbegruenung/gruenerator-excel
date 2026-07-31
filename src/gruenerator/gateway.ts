@@ -7,6 +7,9 @@
  * erhalten — er ist das Einzige, was von Hand gesetzt wird.
  */
 
+import { clearOAuthCredentials } from "../auth/oauth-storage.js";
+import { BROWSER_OAUTH_PROVIDERS } from "../auth/provider-map.js";
+import type { SettingsStore } from "../storage/local/settings-store.js";
 import {
   listOpenAiGatewayConfigs,
   saveOpenAiGatewayConfig,
@@ -82,6 +85,33 @@ export async function disableLegacyProxy(settings: {
   if (configured !== true) return;
 
   await settings.set("proxy.enabled", false);
+}
+
+/**
+ * Entfernt jede fremde Anmeldung aus dem Browser-Speicher.
+ *
+ * Upstream konnte man sich bei Anthropic, ChatGPT, Copilot und Google
+ * einloggen; wer eine ältere Fassung benutzt hat, ist dort weiterhin
+ * angemeldet, weil Zugangsdaten das Entfernen des Anmelde-Codes überleben.
+ * Dieser Fork hat genau eine Modellquelle, also darf auch genau eine
+ * Zugangsberechtigung im Speicher liegen — der eigene Schlüssel, und der
+ * liegt am Gateway, nicht hier.
+ *
+ * Läuft bei jedem Start und nicht als einmalige Migration: es ist billig, und
+ * ein zurückgespieltes Backup darf keine fremden Token wieder einschleusen.
+ */
+export async function purgeForeignCredentials(
+  providerKeys: { list(): Promise<string[]>; delete(provider: string): Promise<void> },
+  settings: SettingsStore,
+): Promise<void> {
+  const stored = await providerKeys.list();
+  for (const provider of stored) {
+    await providerKeys.delete(provider);
+  }
+
+  for (const providerId of BROWSER_OAUTH_PROVIDERS) {
+    await clearOAuthCredentials(settings, providerId);
+  }
 }
 
 /** Ist ein Schlüssel hinterlegt? Steuert den Hinweis auf der Startseite. */
