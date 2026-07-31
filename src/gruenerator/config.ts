@@ -23,4 +23,17 @@ export const GRUENERATOR_ENDPOINT_URL = "https://litellm.netzbegruenung.verdigad
  */
 export const GRUENERATOR_MODEL_ID = "verdigado-think";
 
-export const GRUENERATOR_CONTEXT_WINDOW = 128_000;
+/**
+ * 64k, NICHT die 128k des Modell-Tags.
+ *
+ * Die Ollama-gestützten verdigado-Lanes kürzen zu lange Prompts **still**:
+ * bei ~350k Input antworten sie mit HTTP 200 und `prompt_tokens: 65538` —
+ * die Signatur eines `num_ctx` von 65536, unabhängig davon, was das Tag
+ * verspricht. Ein zu hoher Wert kostet hier keinen Fehler, sondern Kontext:
+ * das Add-in packt die Arbeitsmappe voll und bekommt eine Antwort auf einem
+ * Fragment. Das Grünerator-Backend fährt aus demselben Grund CTX_VERDIGADO
+ * = 64_000 (apps/api/routes/chat/agents/providers.ts).
+ *
+ * Nur zusammen mit einem frischen Needle-Test und einer Overflow-Probe erhöhen.
+ */
+export const GRUENERATOR_CONTEXT_WINDOW = 64_000;
