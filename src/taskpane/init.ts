@@ -12,6 +12,7 @@ function isTaskpaneInitPayloadShape(value: DynamicValue): value is DynamicObject
 import { html, render } from "lit";
 import { Agent } from "@earendil-works/pi-agent-core";
 import { getAppStorage } from "../storage/local/app-storage.js";
+import { takeRecentFetchFailure } from "../gruenerator/network-diagnostics.js";
 import {
   ensureGruenratorGateway,
   disableLegacyProxy,
@@ -1224,7 +1225,23 @@ export async function initTaskpane(opts: {
               `Network error (likely CORS). If you're using OAuth, enable /settings → Proxy with ${DEFAULT_PROXY_URL} and retry. Guide: ${PROXY_HELPER_DOCS_URL}`,
             );
           } else {
-            showErrorBanner(errorRoot, t("init.llmError", { error: err }));
+            // Den letzten Fetch-Abbruch anhängen, falls einer dazu passt: die
+            // Meldung des SDK ("Connection error.") nennt weder Adresse noch
+            // Grund, und ohne beides ist sie nicht zu gebrauchen. Nur Abbrüche
+            // der Modellstrecke selbst — im Hintergrund scheitern dauernd
+            // andere Anfragen, und die erklären hier nichts.
+            const failure = takeRecentFetchFailure("/chat/completions");
+            showErrorBanner(
+              errorRoot,
+              failure
+                ? t("init.llmErrorWithCause", {
+                    error: err,
+                    method: failure.method,
+                    url: failure.url,
+                    detail: failure.message,
+                  })
+                : t("init.llmError", { error: err }),
+            );
           }
         }
       } else {

@@ -16,6 +16,8 @@ import {
   DEFAULT_PROXY_URL,
   validateOfficeProxyUrl,
 } from "./proxy-validation.js";
+import { recordFetchFailure } from "../gruenerator/network-diagnostics.js";
+
 import { rewriteDevProxyUrl } from "./dev-rewrites.js";
 
 /** The original, un-patched fetch — use for requests that should bypass the proxy */
@@ -120,7 +122,7 @@ function stripAnthropicBrowserHeader(init?: RequestInit): RequestInit | undefine
 export function installFetchInterceptor(): void {
   originalFetch = window.fetch.bind(window);
 
-  window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  const route = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const url = typeof input === "string"
       ? input
       : input instanceof URL
@@ -160,5 +162,25 @@ export function installFetchInterceptor(): void {
     }
 
     return originalFetch(input, init);
+  };
+
+  // Jeder Abbruch wird mitgeschrieben, bevor er weitergereicht wird. pi-ai
+  // ersetzt die Ursache durch ein blankes „Connection error."; ohne diese
+  // Aufzeichnung steht in der Oberfläche eine Meldung, die weder Adresse noch
+  // Grund nennt. Das Verhalten bleibt unverändert — der Fehler fliegt weiter.
+  window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    try {
+      return await route(input, init);
+    } catch (error) {
+      const url = typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.toString()
+          : input.url;
+      const method = init?.method
+        ?? (typeof input !== "string" && !(input instanceof URL) ? input.method : "GET");
+      recordFetchFailure(url, method, error);
+      throw error;
+    }
   };
 }
