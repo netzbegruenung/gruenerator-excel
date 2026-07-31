@@ -51,6 +51,29 @@ function jsonResponse(payload: DynamicValue, status = 200): Response {
   });
 }
 
+/** Eine SSE-Antwort, wie sie der Chat bekommt. */
+function streamResponse(): Response {
+  return new Response(
+    new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('data: {"choices":[{"delta":{}}]}\n\n'));
+        controller.close();
+      },
+    }),
+    { status: 200, headers: { "Content-Type": "text/event-stream" } },
+  );
+}
+
+/**
+ * Antwort ohne lesbaren Datenstrom — so verhalten sich Webviews, die
+ * `Response.body` nicht herausgeben.
+ */
+function bodylessResponse(): Response {
+  const response = new Response(null, { status: 200 });
+  Object.defineProperty(response, "body", { value: null });
+  return response;
+}
+
 function catalogWith(...ids: string[]): Response {
   return jsonResponse({ object: "list", data: ids.map((id) => ({ id, object: "model" })) });
 }
@@ -88,10 +111,7 @@ void test("ein leerer Schlüssel wird gar nicht erst verschickt", async () => {
 });
 
 void test("erfolgreicher Lauf prüft Katalog und Modellstrecke", async () => {
-  const { result, calls } = run([
-    () => catalogWith(MODEL, "verdigado-pro"),
-    () => jsonResponse({ choices: [{ message: { content: "ok" } }] }),
-  ]);
+  const { result, calls } = run([() => catalogWith(MODEL, "verdigado-pro"), streamResponse]);
   const outcome = await result;
 
   assert.equal(outcome.ok, true);
@@ -107,13 +127,43 @@ void test("erfolgreicher Lauf prüft Katalog und Modellstrecke", async () => {
   assert.equal(calls[1]?.url, `${ENDPOINT}/chat/completions`);
   assert.equal(calls[1]?.method, "POST");
   // Die Probe darf nichts kosten und nichts erzeugen — ein Token genügt.
+  // `stream: true` ist Pflicht: der Chat streamt, und ein Test in der anderen
+  // Betriebsart hat den Fehler schon einmal nicht gesehen.
   const probe: DynamicValue = JSON.parse(calls[1]?.body ?? "{}");
   assert.deepEqual(probe, {
     model: MODEL,
     messages: [{ role: "user", content: "ping" }],
     max_tokens: 1,
-    stream: false,
+    stream: true,
   });
+});
+
+void test("eine Antwort ohne lesbaren Datenstrom meldet die Stromstufe", async () => {
+  // Der Fall, den der nicht gestreamte Test nicht sehen konnte: Endpoint,
+  // Schlüssel und Modell stimmen, aber der Chat kann die Antwort nicht lesen.
+  const outcome = await run([() => catalogWith(MODEL), bodylessResponse]).result;
+
+  assert.equal(outcome.ok, false);
+  if (outcome.ok) return;
+  assert.equal(outcome.stage, "stream");
+});
+
+void test("ein Lesefehler im Datenstrom meldet die Stromstufe mit Grund", async () => {
+  const failing = (): Response =>
+    new Response(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.error(new Error("The network connection was lost."));
+        },
+      }),
+      { status: 200 },
+    );
+  const outcome = await run([() => catalogWith(MODEL), failing]).result;
+
+  assert.equal(outcome.ok, false);
+  if (outcome.ok) return;
+  assert.equal(outcome.stage, "stream");
+  assert.equal(outcome.detail, "The network connection was lost.");
 });
 
 void test("ein nicht erreichbarer Endpoint meldet die Netzwerkstufe", async () => {

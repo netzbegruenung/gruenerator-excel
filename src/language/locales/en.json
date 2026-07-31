@@ -1144,5 +1144,7 @@
   "gruenerator.access.status_drift": "Der Chat benutzt {endpoint} mit {model} — das weicht von der Konfiguration ab. Mit „Zurücksetzen“ korrigieren.",
   "gruenerator.access.repair": "Zurücksetzen",
   "gruenerator.access.repaired": "Endpoint und Modell zurückgesetzt.",
-  "gruenerator.access.repair_failed": "Zurücksetzen fehlgeschlagen."
+  "gruenerator.access.repair_failed": "Zurücksetzen fehlgeschlagen.",
+  "gruenerator.access.test_stream": "Die Antwort kommt an, lässt sich aber nicht stückweise lesen. Der Chat streamt — deshalb scheitert er, obwohl Schlüssel und Modell stimmen.",
+  "gruenerator.access.test_stream_detail": "Datenstrom nicht lesbar: {detail}"
 }

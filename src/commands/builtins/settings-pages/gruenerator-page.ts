@@ -71,6 +71,11 @@ function describeFailure(stage: ConnectionTestStage, detail: string): string {
       ? t("gruenerator.access.test_upstream_detail", { detail })
       : t("gruenerator.access.test_upstream");
   }
+  if (stage === "stream") {
+    return detail.length > 0
+      ? t("gruenerator.access.test_stream_detail", { detail })
+      : t("gruenerator.access.test_stream");
+  }
   return detail.length > 0
     ? t("gruenerator.access.test_http", { detail })
     : t("gruenerator.access.test_failed");

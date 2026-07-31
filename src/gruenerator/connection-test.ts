@@ -27,6 +27,7 @@ export type ConnectionTestStage =
   | "scope"
   | "catalog"
   | "upstream"
+  | "stream"
   | "http";
 
 export type ConnectionTestResult =
@@ -160,8 +161,15 @@ export async function testGruenratorConnection(
   }
 
   // ── 3. Modellstrecke: antwortet auch LiteLLM dahinter? ────────────────────
-  // Ein Token Ausgabe genügt; geprüft wird, ob eine Antwort zustande kommt,
-  // nicht was drinsteht.
+  //
+  // `stream: true`, obwohl eine einfache Antwort billiger waere — der Chat
+  // streamt, und genau das ist der Unterschied, an dem der Test schon einmal
+  // vorbeigeprueft hat: eine nicht gestreamte Anfrage kam durch, der Chat
+  // meldete weiter "Connection error". Ein Test, der eine andere Betriebsart
+  // prueft als die, die im Betrieb laeuft, ist kein Test.
+  //
+  // Ein Token Ausgabe genuegt; geprueft wird, ob eine Antwort zustande kommt
+  // und ob sich der Datenstrom lesen laesst, nicht was drinsteht.
   let completionResponse: Response;
   try {
     completionResponse = await fetchFn(`${baseUrl}/chat/completions`, {
@@ -171,7 +179,7 @@ export async function testGruenratorConnection(
         model: modelId,
         messages: [{ role: "user", content: "ping" }],
         max_tokens: 1,
-        stream: false,
+        stream: true,
       }),
     });
   } catch (error) {
@@ -191,6 +199,31 @@ export async function testGruenratorConnection(
       stage: status === 401 || status === 403 ? stageForStatus(status) : "upstream",
       detail: await readErrorDetail(completionResponse),
     };
+  }
+
+  // ── 4. Datenstrom: laesst sich die Antwort stueckweise lesen? ─────────────
+  //
+  // Eine eigene Stufe, weil sie eine eigene Ursache hat: nicht jede
+  // Webview-Umgebung gibt `Response.body` als lesbaren Strom heraus. Fehlt er,
+  // bekommt der Chat beim ersten Lesen einen Fehler, den das SDK als
+  // Verbindungsfehler meldet — obwohl Endpoint, Schluessel und Modell stimmen.
+  const body = completionResponse.body;
+  if (!body) {
+    return { ok: false, stage: "stream", detail: "" };
+  }
+
+  const reader = body.getReader();
+  try {
+    await reader.read();
+  } catch (error) {
+    return {
+      ok: false,
+      stage: "stream",
+      detail: error instanceof Error ? error.message : "",
+    };
+  } finally {
+    // Der Rest interessiert nicht — Verbindung freigeben, nicht leerlesen.
+    await reader.cancel().catch(() => undefined);
   }
 
   return { ok: true, models, durationMs: Math.max(0, Math.round(now() - startedAt)) };
