@@ -65,6 +65,19 @@ export async function setGruenratorApiKey(
 }
 
 /**
+ * Entfernt den hinterlegten Schlüssel. Der Gateway selbst bleibt stehen — er
+ * wird beim nächsten Start ohnehin neu provisioniert, und ohne ihn hätte die
+ * App gar keine Modellquelle mehr.
+ */
+export async function clearGruenratorApiKey(
+  store: CustomProvidersStoreLike,
+): Promise<OpenAiGatewayConfig> {
+  const gateway = await ensureGruenratorGateway(store, "");
+  document.dispatchEvent(new CustomEvent("pi:providers-changed"));
+  return gateway;
+}
+
+/**
  * Schaltet den lokalen CORS-Proxy ab, falls eine frühere Fassung ihn gesetzt hat.
  *
  * Solange der Gateway direkt auf verdigado zeigte, war der Proxy nötig — dessen
