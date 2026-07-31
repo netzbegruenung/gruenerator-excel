@@ -237,7 +237,7 @@ export async function showWelcomeLogin(providerKeys: ProviderKeysStore): Promise
 
       void import("../commands/builtins/settings-pages/index.js")
         .then(({ openSettings }) => {
-          void openSettings("gateway");
+          void openSettings("gruenerator");
         })
         .catch(() => {
           showToast(t("welcome.toast.cannot_open_settings"));

@@ -6,12 +6,12 @@
   xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
   xsi:type="TaskPaneApp">
 
-  <Id>a1b2c3d4-e5f6-7890-abcd-ef1234567890</Id>
+  <Id>19F32569-43F6-40FD-B897-369EA4FB58CB</Id>
   <Version>1.0.0.0</Version>
-  <ProviderName>Pi for Excel</ProviderName>
-  <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="Pi for Excel" />
-  <Description DefaultValue="Open-source, multi-model AI sidebar add-in for Excel. Powered by Pi." />
+  <ProviderName>Grünerator</ProviderName>
+  <DefaultLocale>de-DE</DefaultLocale>
+  <DisplayName DefaultValue="Grünerator für Excel" />
+  <Description DefaultValue="KI-Seitenleiste für Excel. Betrieben mit Grünerator." />
   <IconUrl DefaultValue="https://pi-for-excel.vercel.app/assets/icon-32.png" />
   <HighResolutionIconUrl DefaultValue="https://pi-for-excel.vercel.app/assets/icon-80.png" />
   <SupportUrl DefaultValue="https://github.com/tmustier/pi-for-excel" />

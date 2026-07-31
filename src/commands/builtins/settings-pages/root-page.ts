@@ -5,7 +5,7 @@
 
 import { getAppStorage } from "../../../storage/local/app-storage.js";
 
-import { listOpenAiGatewayConfigs } from "../../../auth/custom-gateways.js";
+import { hasGruenratorApiKey } from "../../../gruenerator/gateway.js";
 import { PI_EXECUTION_MODE_CHANGED_EVENT, type ExecutionMode } from "../../../execution/mode.js";
 import type { ModelSwitchBehavior } from "../../../models/switch-behavior.js";
 import { getLanguage, initLanguage, t } from "../../../language/index.js";
@@ -17,8 +17,6 @@ import {
   Plug,
   Puzzle,
   Ruler,
-  Server,
-  ShieldCheck,
   Zap,
   lucide,
 } from "../../../ui/lucide-icons.js";
@@ -39,56 +37,22 @@ function isRootPagePayloadShape(value: DynamicValue): value is DynamicObject {
 function buildProvidersGroup(ctx: SettingsPageContext): HTMLElement {
   const group = createSettingsGroup(t("settings.group.ai_providers"));
 
-  const providersRow = createNavRow({
+  const accessRow = createNavRow({
     icon: lucide(Zap),
-    label: t("settings.row.providers"),
-    sublabel: t("settings.row.providers.sub"),
-    onActivate: () => ctx.navigate("providers"),
+    label: t("settings.row.gruenerator"),
+    sublabel: t("settings.row.gruenerator.sub"),
+    onActivate: () => ctx.navigate("gruenerator"),
   });
 
-  const gatewayRow = createNavRow({
-    icon: lucide(Server),
-    label: t("settings.row.gateway"),
-    sublabel: t("settings.row.gateway.sub"),
-    onActivate: () => ctx.navigate("gateway"),
-  });
+  group.list.append(accessRow.root);
 
-  const proxyRow = createNavRow({
-    icon: lucide(ShieldCheck),
-    label: t("settings.row.proxy"),
-    sublabel: t("settings.row.proxy.sub"),
-    onActivate: () => ctx.navigate("proxy"),
-  });
-
-  group.list.append(providersRow.root, gatewayRow.root, proxyRow.root);
-
-  // Best-effort async value previews; never block rendering.
+  // Best-effort async value preview; never block rendering.
   void (async () => {
-    const storage = getAppStorage();
-
     try {
-      const configured = await storage.providerKeys.list();
-      providersRow.setValue(
-        configured.length > 0
-          ? t("settings.value.connected_count", { count: configured.length })
-          : t("settings.value.not_set_up"),
+      const configured = await hasGruenratorApiKey(getAppStorage().customProviders);
+      accessRow.setValue(
+        configured ? t("settings.value.on") : t("settings.value.not_set_up"),
       );
-    } catch {
-      // leave preview empty
-    }
-
-    try {
-      const gateways = await listOpenAiGatewayConfigs(storage.customProviders);
-      gatewayRow.setValue(
-        gateways.length > 0 ? String(gateways.length) : t("settings.value.none"),
-      );
-    } catch {
-      // leave preview empty
-    }
-
-    try {
-      const proxyEnabled = await storage.settings.get<boolean>("proxy.enabled");
-      proxyRow.setValue(proxyEnabled === true ? t("settings.value.on") : t("settings.value.off"));
     } catch {
       // leave preview empty
     }

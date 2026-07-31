@@ -4,9 +4,7 @@
  * All configuration surfaces live as pages inside one settings shell
  * (see `src/ui/settings-shell.ts` and `docs/settings-ux-redesign.md`):
  *
- *   root ─┬─ providers        model provider logins
- *         ├─ gateway          custom OpenAI-compatible gateway
- *         ├─ proxy            local proxy helper
+ *   root ─┬─ gruenerator      Zugangsschlüssel für den Grünerator-Gateway
  *         ├─ rules            rules + workbook rules + format conventions
  *         ├─ backups          workbook recovery snapshots
  *         ├─ connections      web search / extension connections / MCP
@@ -28,9 +26,7 @@ import {
   type SettingsPagesDependencies,
 } from "./dependencies.js";
 import { createRootPage } from "./root-page.js";
-import { createProvidersPage } from "./providers-page.js";
-import { createGatewayPage } from "./gateway-page.js";
-import { createProxyPage } from "./proxy-page.js";
+import { createGruenratorPage } from "./gruenerator-page.js";
 import { createRulesPage } from "./rules-page.js";
 import { createBackupsPage } from "./backups-page.js";
 import {
@@ -48,9 +44,7 @@ export type ExtensionsHubTab = "connections" | "plugins" | "skills";
 
 export type SettingsPageId =
   | "root"
-  | "providers"
-  | "gateway"
-  | "proxy"
+  | "gruenerator"
   | "rules"
   | "backups"
   | "connections"
@@ -66,9 +60,7 @@ function getPageRegistry(): Map<string, SettingsShellPage> {
 
   const pages: SettingsShellPage[] = [
     createRootPage(),
-    createProvidersPage(),
-    createGatewayPage(),
-    createProxyPage(),
+    createGruenratorPage(),
     createRulesPage(),
     createBackupsPage(),
     createConnectionsPage(),
@@ -130,11 +122,9 @@ function resolveLegacySection(section: SettingsOverlaySection): SettingsPageId {
   switch (section) {
     case "logins":
     case "providers":
-      return "providers";
     case "custom-gateways":
-      return "gateway";
     case "proxy":
-      return "proxy";
+      return "gruenerator";
     case "experimental":
       return "experimental";
     case "connections":

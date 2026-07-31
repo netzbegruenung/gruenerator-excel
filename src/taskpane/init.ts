@@ -12,6 +12,7 @@ function isTaskpaneInitPayloadShape(value: DynamicValue): value is DynamicObject
 import { html, render } from "lit";
 import { Agent } from "@earendil-works/pi-agent-core";
 import { getAppStorage } from "../storage/local/app-storage.js";
+import { ensureGruenratorGateway } from "../gruenerator/gateway.js";
 import type { SessionData } from "../storage/local/types.js";
 
 import { createOfficeStreamFn } from "../auth/stream-proxy.js";
@@ -226,6 +227,15 @@ export async function initTaskpane(opts: {
 
   // 1. Storage
   const { providerKeys, sessions, settings, customProviders, modelCatalogs } = initAppStorage();
+
+  // 1b. Grünerator-Gateway anlegen/aktualisieren, bevor Provider gelesen werden.
+  // Schlägt es fehl, startet die App trotzdem — dann fehlt nur das Modell, und
+  // die Einstellungen zeigen den Hinweis auf den Zugangsschlüssel.
+  try {
+    await ensureGruenratorGateway(customProviders);
+  } catch (error) {
+    console.warn("[gruenerator] Gateway konnte nicht provisioniert werden:", error);
+  }
 
   // Initialize language from storage
   try {

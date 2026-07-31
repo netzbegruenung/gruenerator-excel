@@ -6,5 +6,5 @@
 
 export async function showProviderPicker(): Promise<void> {
   const { openSettings } = await import("./settings-pages/index.js");
-  await openSettings("providers");
+  await openSettings("gruenerator");
 }
