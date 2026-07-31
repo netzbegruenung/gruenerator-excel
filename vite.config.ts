@@ -233,6 +233,15 @@ export default defineConfig({
         }),
 
     proxy: {
+      // Grünerator-Backend im lokalen Lauf. Über diesen Proxy wird der Aufruf
+      // same-origin: das Taskpane läuft auf HTTPS und dürfte ein
+      // http://localhost:3001 gar nicht erst aufrufen (Mixed Content), und
+      // CORS entfällt gleich mit. Ziel per VITE_GRUENERATOR_API überschreibbar.
+      "/api": {
+        target: process.env.VITE_GRUENERATOR_API || "http://localhost:3001",
+        changeOrigin: true,
+        secure: false,
+      },
       // OAuth token endpoints. Keep longer/more-specific prefixes before shorter ones.
       "/oauth-proxy/anthropic-platform": proxyEntry("https://platform.claude.com", "/oauth-proxy/anthropic-platform"),
       "/oauth-proxy/anthropic": proxyEntry("https://console.anthropic.com", "/oauth-proxy/anthropic"),

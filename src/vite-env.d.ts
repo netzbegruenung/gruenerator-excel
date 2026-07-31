@@ -13,4 +13,10 @@ interface ImportMetaEnv {
   readonly VITE_PI_BACKGROUND_VERIFY_URL?: string;
   /** Dev-only bearer secret for the background verification bridge. */
   readonly VITE_PI_BACKGROUND_VERIFY_TOKEN?: string;
+  /**
+   * Grünerator-Endpoint. Unbelegt = Produktion. Für einen lokalen Lauf in
+   * `.env.local` auf `https://localhost:3141/api/v1` setzen — das geht durch
+   * den `/api`-Proxy des Dev-Servers ans Backend und bleibt same-origin.
+   */
+  readonly VITE_GRUENERATOR_ENDPOINT?: string;
 }

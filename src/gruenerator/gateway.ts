@@ -61,6 +61,29 @@ export async function setGruenratorApiKey(
   return gateway;
 }
 
+/**
+ * Schaltet den lokalen CORS-Proxy ab, falls eine frühere Fassung ihn gesetzt hat.
+ *
+ * Solange der Gateway direkt auf verdigado zeigte, war der Proxy nötig — dessen
+ * nginx beantwortet den CORS-Preflight mit 401. Seit der Umstellung auf das
+ * Grünerator-Backend ist er überflüssig und sogar schädlich: er blockt
+ * Loopback-Ziele (`blocked_target_loopback`), also genau den lokalen Lauf.
+ *
+ * Das Entfernen des Codes allein genügt nicht — `proxy.enabled` liegt im
+ * Browser-Speicher und überlebt jedes Update. Und weil die Proxy-Seite aus den
+ * Einstellungen entfernt ist, gäbe es keinen Weg, ihn von Hand auszuschalten.
+ * Kann weg, sobald niemand mehr eine Installation von vor der Umstellung hat.
+ */
+export async function disableLegacyProxy(settings: {
+  get(key: string): Promise<DynamicValue>;
+  set(key: string, value: DynamicValue): Promise<void>;
+}): Promise<void> {
+  const configured = await settings.get("proxy.enabled");
+  if (configured !== true) return;
+
+  await settings.set("proxy.enabled", false);
+}
+
 /** Ist ein Schlüssel hinterlegt? Steuert den Hinweis auf der Startseite. */
 export async function hasGruenratorApiKey(store: CustomProvidersStoreLike): Promise<boolean> {
   const gateway = await findGruenratorGateway(store);

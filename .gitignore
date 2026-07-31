@@ -36,3 +36,7 @@ manifest.dev.xml
 
 # Session exports
 pi-session-*
+
+# Lokale Überschreibungen (Endpoint, Ports) — nie einchecken
+.env.local
+.env*.local

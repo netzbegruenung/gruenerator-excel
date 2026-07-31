@@ -15,8 +15,15 @@
 /** Fester Anzeigename — dient zugleich als Wiedererkennung beim Provisionieren. */
 export const GRUENERATOR_GATEWAY_NAME = "Grünerator";
 
-/** Für lokale Entwicklung gegen das eigene Backend auf `https://localhost:3001/api/v1` zeigen. */
-export const GRUENERATOR_ENDPOINT_URL = "https://gruenerator.eu/api/v1";
+/**
+ * Standardmäßig die Produktion. Für einen lokalen Lauf
+ * `VITE_GRUENERATOR_ENDPOINT=https://localhost:3141/api/v1` setzen — das geht
+ * durch den `/api`-Proxy des Dev-Servers ans Backend auf :3001 und bleibt damit
+ * same-origin. Ein direktes `http://localhost:3001` ginge nicht: das Taskpane
+ * läuft auf HTTPS, der Browser blockt den Aufruf als Mixed Content.
+ */
+export const GRUENERATOR_ENDPOINT_URL =
+  import.meta.env.VITE_GRUENERATOR_ENDPOINT ?? "https://gruenerator.eu/api/v1";
 
 /**
  * Gemma 4 31B (ctx128k). Im Tool-Loop-Test gegen gefakte Excel-Tools: 3 Runden,
