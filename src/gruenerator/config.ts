@@ -16,14 +16,25 @@
 export const GRUENERATOR_GATEWAY_NAME = "Grünerator";
 
 /**
- * Standardmäßig die Produktion. Für einen lokalen Lauf
- * `VITE_GRUENERATOR_ENDPOINT=https://localhost:3141/api/v1` setzen — das geht
- * durch den `/api`-Proxy des Dev-Servers ans Backend auf :3001 und bleibt damit
- * same-origin. Ein direktes `http://localhost:3001` ginge nicht: das Taskpane
- * läuft auf HTTPS, der Browser blockt den Aufruf als Mixed Content.
+ * Im Dev-Server der eigene `/api`-Pfad, im Produktionsbuild gruenerator.eu.
+ *
+ * Der Dev-Pfad geht durch den `/api`-Proxy aus `vite.config.ts` ans Backend auf
+ * :3001 und bleibt dadurch **same-origin**: das Taskpane läuft auf HTTPS und
+ * dürfte ein `http://localhost:3001` gar nicht erst aufrufen (Mixed Content),
+ * und CORS entfällt gleich mit.
+ *
+ * Bewusst an `import.meta.env.DEV` statt an einer Variablen in `.env.local`:
+ * Vite liest Env-Dateien nur beim Start, ein nachträglich angelegtes
+ * `.env.local` wirkt also nicht — und der Fehler sieht aus wie ein
+ * Verbindungsproblem, nicht wie eine vergessene Neustart. `DEV` ist immer
+ * korrekt, ohne dass jemand daran denken muss.
+ *
+ * `VITE_GRUENERATOR_ENDPOINT` überschreibt weiterhin beides, etwa um den
+ * Dev-Build gegen beta.gruenerator.eu laufen zu lassen.
  */
 export const GRUENERATOR_ENDPOINT_URL =
-  import.meta.env.VITE_GRUENERATOR_ENDPOINT ?? "https://gruenerator.eu/api/v1";
+  import.meta.env.VITE_GRUENERATOR_ENDPOINT
+  ?? (import.meta.env.DEV ? "https://localhost:3141/api/v1" : "https://gruenerator.eu/api/v1");
 
 /**
  * Gemma 4 31B (ctx128k). Im Tool-Loop-Test gegen gefakte Excel-Tools: 3 Runden,
