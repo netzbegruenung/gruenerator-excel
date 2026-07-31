@@ -167,8 +167,6 @@ void test("extensions hub connections tab includes MCP test flow", async () => {
 
   assert.match(source, /label: t\("extensions-hub-connections\.mcpSection"\)/);
   assert.match(source, /extensions-hub-connections\.addServer/);
-  assert.match(source, /createConfigRow\(t\("extensions-hub-connections\.availability"\)/);
-  assert.match(source, /scopeSummary\.textContent = t\("extensions-hub-connections\.scope-controls"\)/);
   assert.match(source, /probeMcpServer/);
 });
 
@@ -249,10 +247,6 @@ void test("extensions pages expose connections, plugins, and skills in the setti
     new URL("../src/commands/builtins/settings-pages/extensions-pages.ts", import.meta.url),
     "utf8",
   );
-  const connectionsSource = await readFile(
-    new URL("../src/commands/builtins/extensions-hub-connections.ts", import.meta.url),
-    "utf8",
-  );
   const pluginsSource = await readFile(
     new URL("../src/commands/builtins/extensions-hub-plugins.ts", import.meta.url),
     "utf8",
@@ -266,7 +260,6 @@ void test("extensions pages expose connections, plugins, and skills in the setti
   assert.match(pagesSource, /export function createPluginsPage/);
   assert.match(pagesSource, /export function createSkillsPage/);
   assert.match(pagesSource, /createDeferredConnectionsRefreshController/);
-  assert.match(connectionsSource, /Web search/);
   assert.match(pluginsSource, /Installed/);
   assert.match(skillsSource, /Bundled skills/);
 });

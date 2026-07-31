@@ -257,8 +257,6 @@ export function filterToolsForDisclosureBundle<TTool extends { name: string }>(
 }
 
 export const AUXILIARY_UI_TOOL_NAMES = [
-  "web_search",
-  "fetch_page",
   "mcp",
   "files",
   "python_transform_range",
@@ -298,8 +296,6 @@ export const TOOL_UI_METADATA = {
   conventions: { renderer: true, humanizer: true },
   workbook_history: { renderer: true, humanizer: true },
   skills: { renderer: true, humanizer: true },
-  web_search: { renderer: true, humanizer: true },
-  fetch_page: { renderer: true, humanizer: true },
   mcp: { renderer: true, humanizer: true },
   files: { renderer: true, humanizer: true },
   python_transform_range: { renderer: true, humanizer: true },

@@ -21,8 +21,6 @@ const ALWAYS_READ_TOOLS = new Set<string>([
   "tmux",
   "python_run",
   "libreoffice_convert",
-  "web_search",
-  "fetch_page",
   "mcp",
   // Workspace file operations do not mutate the workbook.
   "files",

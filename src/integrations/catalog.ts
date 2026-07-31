@@ -9,10 +9,8 @@
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 
 import { createMcpTool } from "../tools/mcp.js";
-import { createFetchPageTool } from "../tools/fetch-page.js";
-import { createWebSearchTool } from "../tools/web-search.js";
 
-export const INTEGRATION_IDS = ["web_search", "mcp_tools"] as const;
+export const INTEGRATION_IDS = ["mcp_tools"] as const;
 export type IntegrationId = (typeof INTEGRATION_IDS)[number];
 
 export interface IntegrationPromptEntry {
@@ -39,20 +37,6 @@ export interface IntegrationDefinition {
 }
 
 const INTEGRATION_DEFINITIONS: Record<IntegrationId, IntegrationDefinition> = {
-  web_search: {
-    id: "web_search",
-    title: "Web Search",
-    description: "Search external web content and fetch readable page content. Works out of the box with Jina (default); optionally Serper, Tavily, or Brave.",
-    agentSkillName: "web-search",
-    enabledByDefault: true,
-    warning: "External network access: queries and fetched URLs are sent to the configured provider/target host.",
-    toolNames: ["web_search", "fetch_page"],
-    instructions:
-      "Use web_search when workbook context is insufficient and fresh external facts are needed. "
-      + "After finding promising URLs, use fetch_page to read page content before synthesizing. "
-      + "Cite sources from tool results as [1], [2], etc. Avoid web search when the answer is already in the workbook.",
-    createTools: () => [createWebSearchTool(), createFetchPageTool()],
-  },
   mcp_tools: {
     id: "mcp_tools",
     title: "MCP Gateway (Alpha)",
@@ -74,7 +58,6 @@ export function listIntegrationDefinitions(): IntegrationDefinition[] {
 export function getIntegrationDefinition(integrationId: string): IntegrationDefinition | null {
   if (!Object.hasOwn(INTEGRATION_DEFINITIONS, integrationId)) return null;
 
-  if (integrationId === "web_search") return INTEGRATION_DEFINITIONS.web_search;
   if (integrationId === "mcp_tools") return INTEGRATION_DEFINITIONS.mcp_tools;
   return null;
 }

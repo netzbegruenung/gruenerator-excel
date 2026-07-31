@@ -18,10 +18,6 @@ import { humanizeColorsInText } from "./color-names.js";
 import { stripYamlFrontmatter } from "./markdown-preprocess.js";
 import { TOOL_NAMES_WITH_RENDERER, type UiToolName } from "../tools/capabilities.js";
 import {
-  mountSearchSetupCard,
-  shouldShowSearchSetupCard,
-} from "./web-search-setup-card.js";
-import {
   mountBridgeSetupCard,
   shouldShowBridgeSetupCard,
 } from "./bridge-setup-card.js";
@@ -1078,14 +1074,6 @@ function describeToolCall(
 
       return { action: "List skills", detail: "" };
     }
-    case "web_search": {
-      const query = p.query as string | undefined;
-      return { action: "Web search", detail: query ? `\"${query}\"` : "query" };
-    }
-    case "fetch_page": {
-      const url = p.url as string | undefined;
-      return { action: "Fetch page", detail: url ?? "url" };
-    }
     case "mcp": {
       if (typeof p.tool === "string") {
         return { action: "MCP call", detail: p.tool };
@@ -1176,14 +1164,7 @@ function createExcelMarkdownRenderer(toolName: SupportedToolName): ToolRenderer<
           : "Dependencies";
         const formulaExplanation = renderExplainFormulaDetails(result.details);
 
-        // Search setup card: show inline guided setup when web_search fails
         const resultDetails: DynamicValue = result.details;
-        const searchSetupDetails = shouldShowSearchSetupCard(resultDetails) ? resultDetails : null;
-        const initSearchSetup = (el: Element | undefined): void => {
-          if (el instanceof HTMLElement && searchSetupDetails) {
-            mountSearchSetupCard(el, searchSetupDetails);
-          }
-        };
 
         // Bridge setup card: show inline setup for bridge-related failures.
         const bridgeSetupDetails = shouldShowBridgeSetupCard(resultDetails) ? resultDetails : null;
@@ -1249,7 +1230,6 @@ function createExcelMarkdownRenderer(toolName: SupportedToolName): ToolRenderer<
                 </div>
               </div>
             </div>
-            ${searchSetupDetails !== null ? html`<div ${ref(initSearchSetup)}></div>` : html``}
             ${bridgeSetupDetails !== null ? html`<div ${ref(initBridgeSetup)}></div>` : html``}
           `,
           isCustom: true,

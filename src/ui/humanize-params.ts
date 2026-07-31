@@ -851,48 +851,7 @@ function humanizeSkills(p: DynamicObject): ParamItem[] {
   return items;
 }
 
-function humanizeWebSearch(p: DynamicObject): ParamItem[] {
-  const items: ParamItem[] = [];
 
-  if (p.query) {
-    items.push({ label: l("Query"), value: `\"${str(p.query)}\"` });
-  }
-
-  if (p.recency) {
-    items.push({ label: l("Recency"), value: str(p.recency) });
-  }
-
-  if (p.site) {
-    if (Array.isArray(p.site)) {
-      const sites = p.site.map((site) => str(site)).filter((site) => site.length > 0);
-      items.push({ label: l("Sites"), value: sites.join(", ") });
-    } else {
-      items.push({ label: l("Site"), value: str(p.site) });
-    }
-  }
-
-  const maxResults = num(p.max_results);
-  if (maxResults !== undefined) {
-    items.push({ label: l("Limit"), value: t("humanize.unit.results", { n: maxResults }) });
-  }
-
-  return items;
-}
-
-function humanizeFetchPage(p: DynamicObject): ParamItem[] {
-  const items: ParamItem[] = [];
-
-  if (p.url) {
-    items.push({ label: l("URL"), value: str(p.url) });
-  }
-
-  const maxChars = num(p.max_chars);
-  if (maxChars !== undefined) {
-    items.push({ label: l("Max chars"), value: String(maxChars) });
-  }
-
-  return items;
-}
 
 function humanizeMcp(p: DynamicObject): ParamItem[] {
   const items: ParamItem[] = [];
@@ -1077,8 +1036,6 @@ const CORE_HUMANIZERS = {
 } satisfies Record<CoreToolName, HumanizerFn>;
 
 const EXTRA_HUMANIZERS = {
-  web_search: humanizeWebSearch,
-  fetch_page: humanizeFetchPage,
   mcp: humanizeMcp,
   files: humanizeFiles,
   python_transform_range: humanizePythonTransformRange,

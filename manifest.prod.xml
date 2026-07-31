@@ -72,11 +72,11 @@
         <bt:Url id="TaskpaneUrl" DefaultValue="https://pi-for-excel.vercel.app/src/taskpane.html" />
       </bt:Urls>
       <bt:ShortStrings>
-        <bt:String id="GroupLabel" DefaultValue="Pi" />
-        <bt:String id="ButtonLabel" DefaultValue="Open Pi" />
+        <bt:String id="GroupLabel" DefaultValue="Grünerator" />
+        <bt:String id="ButtonLabel" DefaultValue="Grünerator öffnen" />
       </bt:ShortStrings>
       <bt:LongStrings>
-        <bt:String id="ButtonDesc" DefaultValue="Open the Pi AI assistant sidebar" />
+        <bt:String id="ButtonDesc" DefaultValue="Die Grünerator-Seitenleiste öffnen" />
       </bt:LongStrings>
     </Resources>
   </VersionOverrides>

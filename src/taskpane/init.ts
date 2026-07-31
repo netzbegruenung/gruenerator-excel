@@ -47,9 +47,6 @@ import {
   saveTruncatedToolOutputToWorkspace,
 } from "../tools/output-truncation.js";
 import { withConnectionPreflight } from "../tools/with-connection-preflight.js";
-import {
-  migrateLegacyWebSearchApiKeysToConnectionStore,
-} from "../tools/web-search-config.js";
 import { migrateLegacyMcpTokensToConnectionStore } from "../tools/mcp-config.js";
 import {
   applyExperimentalToolGates,
@@ -254,7 +251,6 @@ export async function initTaskpane(opts: {
 
   // Migrate legacy web-search API keys to the connection store schema.
   try {
-    await migrateLegacyWebSearchApiKeysToConnectionStore(settings);
   } catch (error) {
     console.warn("[pi] Failed to migrate legacy web-search API keys:", error);
   }

@@ -5,36 +5,18 @@
  * and bridge URLs.
  */
 
-import { INTEGRATION_IDS } from "../../integrations/catalog.js";
+import { maskSecret } from "../../utils/secrets.js";
 import type { IntegrationSettingsStore } from "../../integrations/store.js";
-import type { WebSearchConfigStore } from "../../tools/web-search-config.js";
 import type { McpConfigStore, McpServerConfig } from "../../tools/mcp-config.js";
 import {
   getExternalToolsEnabled,
-  getSessionIntegrationIds,
-  getWorkbookIntegrationIds,
   setExternalToolsEnabled,
-  setIntegrationEnabledInScope,
 } from "../../integrations/store.js";
-import {
-  checkApiKeyFormat,
-  getApiKeyForProvider,
-  isApiKeyRequired,
-  loadWebSearchProviderConfig,
-  maskSecret,
-  saveWebSearchApiKey,
-  saveWebSearchProvider,
-  clearWebSearchApiKey,
-  WEB_SEARCH_PROVIDER_INFO,
-  type WebSearchProvider,
-} from "../../tools/web-search-config.js";
-import { validateWebSearchApiKey } from "../../tools/web-search.js";
 import {
   createMcpServerConfig,
   loadMcpServers,
   saveMcpServers,
 } from "../../tools/mcp-config.js";
-import { getEnabledProxyBaseUrl } from "../../tools/external-fetch.js";
 import { validateOfficeProxyUrl } from "../../auth/proxy-validation.js";
 import { dispatchExperimentalToolConfigChanged } from "../../experiments/events.js";
 import {
@@ -61,48 +43,22 @@ import {
   createButton,
   createToggle,
 } from "../../ui/extensions-hub-components.js";
-import { lucide, Search, Terminal, Zap } from "../../ui/lucide-icons.js";
+import { lucide, Terminal, Zap } from "../../ui/lucide-icons.js";
 import { t } from "../../language/index.js";
 import type { ExtensionsHubDependencies } from "./settings-pages/dependencies.js";
 import { renderExtensionConnectionsSection } from "./extensions-hub-extension-connections.js";
 
-type SettingsStore = IntegrationSettingsStore & WebSearchConfigStore & McpConfigStore & {
+type SettingsStore = IntegrationSettingsStore & McpConfigStore & {
   delete?: (key: string) => Promise<void>;
 };
 
 // ── Helpers ─────────────────────────────────────────
 
-function normalizeProvider(value: string): WebSearchProvider {
-  if (value === "jina" || value === "firecrawl" || value === "serper" || value === "tavily" || value === "brave") return value;
-  return "jina";
-}
 
 function getStatusBadge(ok: boolean, label: string): { text: string; tone: "ok" | "warn" | "muted" } {
   return ok ? { text: label, tone: "ok" } : { text: label, tone: "muted" };
 }
 
-function describeWebSearchAvailability(args: {
-  sessionEnabled: boolean;
-  workbookEnabled: boolean;
-  workbookLabel: string;
-  hasWorkbook: boolean;
-}): string {
-  const { sessionEnabled, workbookEnabled, workbookLabel, hasWorkbook } = args;
-
-  if (sessionEnabled && workbookEnabled && hasWorkbook) {
-    return `Session + workbook (${workbookLabel})`;
-  }
-
-  if (workbookEnabled && hasWorkbook) {
-    return t("ext-hub-connections.scopeWorkbook", { label: workbookLabel });
-  }
-
-  if (sessionEnabled) {
-    return hasWorkbook ? t("ext-hub-connections.scopeSessionOnly") : t("ext-hub-connections.scopeSession");
-  }
-
-  return hasWorkbook ? t("ext-hub-connections.scopeOff") : t("ext-hub-connections.scopeOffShort");
-}
 
 // Resolved lazily — t() must not run at module scope (language set at boot).
 function bridgeSetupHint(): string {
@@ -175,30 +131,14 @@ export async function renderConnectionsTab(args: {
 }): Promise<void> {
   const { container, settings, deps, isBusy, runMutation } = args;
 
-  const sessionId = deps.getActiveSessionId();
-  const workbookContext = await deps.resolveWorkbookContext();
-  const workbookId = workbookContext.workbookId;
-
   // Load state
   const [
     externalEnabled,
-    sessionIntegrationIds,
-    workbookIntegrationIds,
-    webSearchConfig,
     mcpServers,
     pythonUrlRaw,
     tmuxUrlRaw,
   ] = await Promise.all([
     getExternalToolsEnabled(settings),
-    sessionId
-      ? getSessionIntegrationIds(settings, sessionId, INTEGRATION_IDS, {
-        applyDefaultsWhenUnconfigured: workbookId === null,
-      })
-      : Promise.resolve<string[]>([]),
-    workbookId
-      ? getWorkbookIntegrationIds(settings, workbookId, INTEGRATION_IDS)
-      : Promise.resolve<string[]>([]),
-    loadWebSearchProviderConfig(settings),
     loadMcpServers(settings),
     settings.get(PYTHON_BRIDGE_URL_SETTING_KEY),
     settings.get(TMUX_BRIDGE_URL_SETTING_KEY),
@@ -208,12 +148,6 @@ export async function renderConnectionsTab(args: {
   const tmuxUrl = typeof tmuxUrlRaw === "string" ? tmuxUrlRaw.trim() : "";
   const effectivePythonUrl = pythonUrl.length > 0 ? pythonUrl : DEFAULT_PYTHON_BRIDGE_URL;
   const effectiveTmuxUrl = tmuxUrl.length > 0 ? tmuxUrl : DEFAULT_TMUX_BRIDGE_URL;
-  const selectedProvider = webSearchConfig.provider;
-  const providerInfo = WEB_SEARCH_PROVIDER_INFO[selectedProvider];
-  const apiKey = getApiKeyForProvider(webSearchConfig);
-  const webSearchSessionEnabled = sessionIntegrationIds.includes("web_search");
-  const webSearchWorkbookEnabled = workbookIntegrationIds.includes("web_search");
-  const webSearchEnabled = webSearchSessionEnabled || webSearchWorkbookEnabled;
 
   container.replaceChildren();
 
@@ -235,195 +169,6 @@ export async function renderConnectionsTab(args: {
   });
   surface.appendChild(masterToggle.root);
   container.appendChild(surface);
-
-  // ── Web search section ────────────────────────
-  container.appendChild(createSectionHeader({ label: t("extensions-hub-connections.webSearch") }));
-
-  const webBadgeText = !webSearchEnabled
-    ? t("extensions-hub-connections.webSearchOff")
-    : apiKey
-      ? t("extensions-hub-connections.webSearchConnected")
-      : (isApiKeyRequired(selectedProvider) ? t("extensions-hub-connections.noApiKey") : t("extensions-hub-connections.ready"));
-  const webBadgeTone = !webSearchEnabled
-    ? "muted"
-    : (apiKey || !isApiKeyRequired(selectedProvider) ? "ok" : "warn");
-
-  const webCard = createItemCard({
-    icon: lucide(Search),
-    iconColor: "green",
-    name: providerInfo.title,
-    description: providerInfo.shortDescription,
-    expandable: true,
-    badges: [{ text: webBadgeText, tone: webBadgeTone }],
-  });
-
-  // Provider picker
-  const providerSelect = document.createElement("select");
-  providerSelect.className = "pi-item-card__config-input pi-item-card__config-select";
-  for (const [key, info] of Object.entries(WEB_SEARCH_PROVIDER_INFO)) {
-    const option = document.createElement("option");
-    option.value = key;
-    option.textContent = info.title;
-    if (key === selectedProvider) option.selected = true;
-    providerSelect.appendChild(option);
-  }
-  providerSelect.addEventListener("change", () => {
-    const provider = normalizeProvider(providerSelect.value);
-    void runMutation(
-      () => saveWebSearchProvider(settings, provider),
-      "config",
-      `Web search provider set to ${WEB_SEARCH_PROVIDER_INFO[provider].title}`,
-    );
-  });
-
-  webCard.body.appendChild(createConfigRow(t("extensions-hub-connections.providerLabel"), providerSelect));
-
-  // API key row
-  const apiKeyInput = createConfigInput({
-    placeholder: providerInfo.apiKeyLabel,
-    type: "password",
-    value: apiKey ? maskSecret(apiKey) : "",
-  });
-
-  const apiKeyRow = document.createElement("div");
-  apiKeyRow.className = "pi-item-card__config-row";
-
-  const apiKeyLabel = document.createElement("span");
-  apiKeyLabel.className = "pi-item-card__config-label";
-  apiKeyLabel.textContent = t("extensions-hub-connections.apiKeyLabel");
-
-  const apiKeyControls = document.createElement("div");
-  apiKeyControls.className = "pi-hub-inline-row";
-
-  const validateBtn = createButton(t("extensions-hub-connections.validateButton"), {
-    compact: true,
-    onClick: () => {
-      if (isBusy()) return;
-      const key = apiKeyInput.value.trim();
-      void (async () => {
-        try {
-          const config = await loadWebSearchProviderConfig(settings);
-          const testKey = key.length > 0 ? key : (getApiKeyForProvider(config) ?? "");
-          if (!testKey) { showToast(t("extensions-hub-connections.toast.noApiKeyToValidate")); return; }
-          const proxyBaseUrl = await getEnabledProxyBaseUrl(settings);
-          const result = await validateWebSearchApiKey({
-            provider: selectedProvider,
-            apiKey: testKey,
-            ...(proxyBaseUrl !== undefined ? { proxyBaseUrl } : {}),
-          });
-          showToast(t(result.ok ? "extensions-hub-connections.toast.validationOk" : "extensions-hub-connections.toast.validationFailed", { message: result.message }));
-        } catch (err) {
-          showToast(t("extensions-hub-connections.toast.validationError", { error: err instanceof Error ? err.message : String(err) }));
-        }
-      })();
-    },
-  });
-
-  const saveKeyBtn = createButton(t("extensions-hub-connections.saveButton"), {
-    primary: true,
-    compact: true,
-    onClick: () => {
-      const key = apiKeyInput.value.trim();
-      if (!key) { showToast(t("extensions-hub-connections.toast.enterApiKey")); return; }
-      const formatWarning = checkApiKeyFormat(selectedProvider, key);
-      void runMutation(
-        () => saveWebSearchApiKey(settings, selectedProvider, key),
-        "config",
-        formatWarning
-          ? `⚠️ ${formatWarning} Key saved anyway — use Validate to test it.`
-          : `Saved ${providerInfo.apiKeyLabel}`,
-      );
-    },
-  });
-
-  const clearKeyBtn = createButton(t("extensions-hub-connections.clearButton"), {
-    compact: true,
-    onClick: () => {
-      void runMutation(
-        () => clearWebSearchApiKey(settings, selectedProvider),
-        "config",
-        `Cleared ${providerInfo.apiKeyLabel}`,
-      );
-    },
-  });
-
-  apiKeyControls.append(apiKeyInput, validateBtn, saveKeyBtn, clearKeyBtn);
-  apiKeyRow.append(apiKeyLabel, apiKeyControls);
-  webCard.body.appendChild(apiKeyRow);
-
-  const availability = createConfigValue(describeWebSearchAvailability({
-    sessionEnabled: webSearchSessionEnabled,
-    workbookEnabled: webSearchWorkbookEnabled,
-    workbookLabel: workbookContext.workbookLabel,
-    hasWorkbook: workbookId !== null,
-  }));
-  webCard.body.appendChild(createConfigRow(t("extensions-hub-connections.availability"), availability));
-
-  const scopeDetails = document.createElement("details");
-  scopeDetails.className = "pi-hub-advanced-disclosure pi-hub-scope-disclosure";
-  if (!webSearchEnabled) {
-    scopeDetails.open = true;
-  }
-
-  const scopeSummary = document.createElement("summary");
-  scopeSummary.className = "pi-hub-advanced-summary";
-  scopeSummary.textContent = t("extensions-hub-connections.scope-controls");
-
-  const scopeBody = document.createElement("div");
-  scopeBody.className = "pi-hub-advanced-body";
-
-  const sessionToggleRow = createToggleRow({
-    label: t("ext-hub-connections.enableSession"),
-    checked: webSearchSessionEnabled,
-    onChange: (checked) => {
-      if (!sessionId) {
-        showToast(t("extensions-hub-connections.toast.noActiveSession"));
-        return;
-      }
-      void runMutation(async () => {
-        await setIntegrationEnabledInScope({
-          settings,
-          scope: "session",
-          identifier: sessionId,
-          integrationId: "web_search",
-          enabled: checked,
-          knownIntegrationIds: INTEGRATION_IDS,
-        });
-      }, "scope", `Web search ${checked ? "enabled" : "disabled"} for this session`);
-    },
-  });
-  sessionToggleRow.input.disabled = isBusy() || !sessionId;
-  scopeBody.appendChild(sessionToggleRow.root);
-
-  const workbookToggleRow = createToggleRow({
-    label: workbookId
-      ? t("ext-hub-connections.enableWorkbook", { label: workbookContext.workbookLabel })
-      : t("ext-hub-connections.scopeUnavailable"),
-    checked: webSearchWorkbookEnabled,
-    onChange: (checked) => {
-      if (!workbookId) {
-        showToast(t("extensions-hub-connections.toast.workbookScopeUnavailable"));
-        return;
-      }
-      void runMutation(async () => {
-        await setIntegrationEnabledInScope({
-          settings,
-          scope: "workbook",
-          identifier: workbookId,
-          integrationId: "web_search",
-          enabled: checked,
-          knownIntegrationIds: INTEGRATION_IDS,
-        });
-      }, "scope", `Web search ${checked ? "enabled" : "disabled"} for this workbook`);
-    },
-  });
-  workbookToggleRow.input.disabled = isBusy() || !workbookId;
-  scopeBody.appendChild(workbookToggleRow.root);
-
-  scopeDetails.append(scopeSummary, scopeBody);
-  webCard.body.appendChild(scopeDetails);
-
-  container.appendChild(webCard.root);
 
   // ── Extension connections section ─────────────
   await renderExtensionConnectionsSection({

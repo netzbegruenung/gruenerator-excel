@@ -28,7 +28,16 @@ const translations: Record<SupportedLanguage, Record<string, string>> = {
   en,
 };
 
-let currentLang: SupportedLanguage = "de";
+/**
+ * Modul-Standard bleibt `en`; die Produktsprache setzt der Start der App
+ * (`initLanguage(lang || "de")` in `taskpane/init.ts`).
+ *
+ * Der Unterschied ist nicht kosmetisch: Tests, die Verhalten prüfen und dabei
+ * beiläufig einen Text vergleichen, würden sonst zu Übersetzungstests — jede
+ * Umformulierung im Deutschen färbt sie rot, obwohl sich am Verhalten nichts
+ * geändert hat. Wer Deutsch prüfen will, ruft `initLanguage("de")` auf.
+ */
+let currentLang: SupportedLanguage = "en";
 
 export function isSupportedLanguage(lang: string): lang is SupportedLanguage {
   return (SUPPORTED_LANGUAGES as readonly string[]).includes(lang);
