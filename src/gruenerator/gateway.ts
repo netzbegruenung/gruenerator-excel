@@ -61,6 +61,26 @@ export async function setGruenratorApiKey(
   return gateway;
 }
 
+/**
+ * PROVISORIUM — entfällt mit dem eigenen Backend-Endpoint.
+ *
+ * Der nginx vor verdigado beantwortet den CORS-Preflight (OPTIONS, per Spec
+ * ohne Credentials) mit 401, weshalb der Browser den eigentlichen POST nie
+ * absetzt. Bis `/api/v1/chat/completions` im Grünerator-Backend steht — wo wir
+ * Preflight und Auth selbst kontrollieren —, läuft der Verkehr über den
+ * lokalen CORS-Proxy. Die Proxy-Seite ist aus den Einstellungen entfernt, also
+ * wird er hier einmalig aktiviert statt von Hand.
+ */
+export async function enableInterimProxy(settings: {
+  get(key: string): Promise<DynamicValue>;
+  set(key: string, value: DynamicValue): Promise<void>;
+}): Promise<void> {
+  const configured = await settings.get("proxy.enabled");
+  if (configured === true) return;
+
+  await settings.set("proxy.enabled", true);
+}
+
 /** Ist ein Schlüssel hinterlegt? Steuert den Hinweis auf der Startseite. */
 export async function hasGruenratorApiKey(store: CustomProvidersStoreLike): Promise<boolean> {
   const gateway = await findGruenratorGateway(store);

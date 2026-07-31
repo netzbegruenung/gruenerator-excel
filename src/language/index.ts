@@ -17,18 +17,18 @@
  * switching reloads the taskpane.
  */
 
+import de from "./locales/de.json" with { type: "json" };
 import en from "./locales/en.json" with { type: "json" };
-import zhCN from "./locales/zh-CN.json" with { type: "json" };
 
-export const SUPPORTED_LANGUAGES = ["en", "zh-CN"] as const;
+export const SUPPORTED_LANGUAGES = ["de", "en"] as const;
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
 const translations: Record<SupportedLanguage, Record<string, string>> = {
+  de,
   en,
-  "zh-CN": zhCN,
 };
 
-let currentLang: SupportedLanguage = "en";
+let currentLang: SupportedLanguage = "de";
 
 export function isSupportedLanguage(lang: string): lang is SupportedLanguage {
   return (SUPPORTED_LANGUAGES as readonly string[]).includes(lang);

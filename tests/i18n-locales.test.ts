@@ -24,7 +24,7 @@ function parseLocaleJson(raw: DynamicValue, label: string): Record<string, strin
 }
 
 const en = parseLocaleJson(JSON.parse(readFileSync(join(localesDir, "en.json"), "utf8")) as DynamicValue, "en");
-const zh = parseLocaleJson(JSON.parse(readFileSync(join(localesDir, "zh-CN.json"), "utf8")) as DynamicValue, "zh-CN");
+const de = parseLocaleJson(JSON.parse(readFileSync(join(localesDir, "de.json"), "utf8")) as DynamicValue, "de");
 
 function requireMatchGroup(match: RegExpMatchArray, index: number): string {
   const value = match[index];
@@ -59,47 +59,32 @@ const localizedUiSourceFiles = ["ui", "taskpane", "commands", "compaction", "fil
   .flatMap((dir) => collectSourceFiles(join(root, "src", dir)));
 const corpus = sourceFiles.map((f) => readFileSync(f, "utf8")).join("\n");
 
-void test("en and zh-CN locales have identical key sets", () => {
-  const missingInZh = Object.keys(en).filter((k) => !(k in zh)).sort();
-  const extraInZh = Object.keys(zh).filter((k) => !(k in en)).sort();
-  assert.deepEqual(missingInZh, [], `keys missing in zh-CN.json: ${missingInZh.join(", ")}`);
-  assert.deepEqual(extraInZh, [], `keys in zh-CN.json but not en.json: ${extraInZh.join(", ")}`);
+void test("en and de locales have identical key sets", () => {
+  const missingInDe = Object.keys(en).filter((k) => !(k in de)).sort();
+  const extraInDe = Object.keys(de).filter((k) => !(k in en)).sort();
+  assert.deepEqual(missingInDe, [], `keys missing in de.json: ${missingInDe.join(", ")}`);
+  assert.deepEqual(extraInDe, [], `keys in de.json but not en.json: ${extraInDe.join(", ")}`);
 });
 
-void test("zh-CN placeholders are a subset of en placeholders per key", () => {
-  // zh may drop English plural-helper vars (e.g. {cue}), but must never
-  // reference a placeholder the caller does not provide.
+void test("de placeholders are a subset of en placeholders per key", () => {
+  // German must never reference a placeholder the caller does not provide.
   const violations: string[] = [];
   for (const [key, enValue] of Object.entries(en)) {
-    const zhValue = zh[key];
-    if (typeof zhValue !== "string") continue;
+    const deValue = de[key];
+    if (typeof deValue !== "string") continue;
     const enVars = placeholders(enValue);
-    for (const v of placeholders(zhValue)) {
+    for (const v of placeholders(deValue)) {
       if (!enVars.has(v)) violations.push(`${key}: {${v}}`);
     }
   }
-  assert.deepEqual(violations, [], `zh-CN placeholders missing from en: ${violations.join(", ")}`);
+  assert.deepEqual(violations, [], `de placeholders missing from en: ${violations.join(", ")}`);
 });
 
-void test("zh-CN drops English-only plural helper placeholders", () => {
-  // Chinese does not inflect nouns for singular/plural, so keeping these
-  // English helper placeholders leaks strings like "file s" into zh-CN UI.
-  const banned = new Set(["plural", "cue"]);
-  const violations: string[] = [];
-  for (const [key, value] of Object.entries(zh)) {
-    for (const v of placeholders(value)) {
-      if (banned.has(v)) violations.push(`${key}: {${v}}`);
-    }
-  }
-  assert.deepEqual(violations, [], `zh-CN should not include English plural helpers: ${violations.join(", ")}`);
-});
-
-void test("zh-CN keeps command syntax placeholders copyable", () => {
-  const violations = Object.entries(zh)
-    .filter(([key]) => key.startsWith("experimental."))
-    .filter(([, value]) => /<[^>]*[\u4e00-\u9fff][^>]*>/.test(value))
-    .map(([key, value]) => `${key}: ${value}`);
-  assert.deepEqual(violations, [], `localized command placeholders in zh-CN: ${violations.join("\n")}`);
+void test("de locale has no empty values", () => {
+  const empty = Object.entries(de)
+    .filter(([, v]) => typeof v !== "string" || v.length === 0)
+    .map(([k]) => k);
+  assert.deepEqual(empty, [], `empty de values: ${empty.join(", ")}`);
 });
 
 void test("en locale has no empty values", () => {

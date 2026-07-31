@@ -1,6 +1,6 @@
 /**
  * Settings root page — grouped navigation plus the handful of inline
- * behavior settings (execution mode, model-switch fork, language).
+ * behavior settings (execution mode, model-switch fork).
  */
 
 import { getAppStorage } from "../../../storage/local/app-storage.js";
@@ -8,7 +8,7 @@ import { getAppStorage } from "../../../storage/local/app-storage.js";
 import { hasGruenratorApiKey } from "../../../gruenerator/gateway.js";
 import { PI_EXECUTION_MODE_CHANGED_EVENT, type ExecutionMode } from "../../../execution/mode.js";
 import type { ModelSwitchBehavior } from "../../../models/switch-behavior.js";
-import { getLanguage, initLanguage, t } from "../../../language/index.js";
+import { t } from "../../../language/index.js";
 import {
   Archive,
   FlaskConical,
@@ -23,7 +23,6 @@ import {
 import {
   createNavRow,
   createSettingsGroup,
-  createSettingSelectRow,
   createSettingToggleRow,
 } from "../../../ui/settings-rows.js";
 import type { SettingsPageContext, SettingsShellPage } from "../../../ui/settings-shell.js";
@@ -150,31 +149,7 @@ function buildBehaviorGroup(ctx: SettingsPageContext): HTMLElement {
     });
   }
 
-  // ── Language ──
-  const languageRow = createSettingSelectRow({
-    label: t("settings.section.language.label"),
-    options: [
-      { value: "en", label: t("settings.section.language.en") },
-      // Disclose that the Chinese translation is AI-generated (issue #608).
-      { value: "zh-CN", label: t("settings.section.language.zh") },
-    ],
-    value: getLanguage(),
-    onChange: (newLang) => {
-      initLanguage(newLang);
-      void (async () => {
-        try {
-          const storage = getAppStorage();
-          await storage.settings.set("language", newLang);
-          showToast(t("settings.lang.reloading"));
-          setTimeout(() => location.reload(), 1000);
-        } catch {
-          showToast(t("settings.lang.saveFailed"));
-        }
-      })();
-    },
-  });
-
-  group.list.append(autoApply.root, forkToggle.root, languageRow.root);
+  group.list.append(autoApply.root, forkToggle.root);
   return group.root;
 }
 
