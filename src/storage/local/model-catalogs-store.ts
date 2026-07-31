@@ -130,4 +130,9 @@ export class ModelCatalogsStore extends Store implements ModelsStore {
   async delete(providerId: string): Promise<void> {
     await this.getBackend().delete("model-catalogs", providerId);
   }
+
+  /** Alle Anbieter, für die ein Katalog zwischengespeichert ist. */
+  async listProviderIds(): Promise<string[]> {
+    return this.getBackend().keys("model-catalogs");
+  }
 }

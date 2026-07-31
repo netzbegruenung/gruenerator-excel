@@ -1109,5 +1109,14 @@
   "gruenerator.access.saved": "Zugangsschlüssel gespeichert.",
   "gruenerator.access.save_failed": "Schlüssel konnte nicht gespeichert werden.",
   "settings.row.gruenerator": "Zugang",
-  "settings.row.gruenerator.sub": "Zugangsschlüssel für Grünerator"
+  "settings.row.gruenerator.sub": "Zugangsschlüssel für Grünerator",
+  "command.model.desc": "Modell für diese Sitzung wechseln",
+  "command.model.no_session": "Keine aktive Sitzung.",
+  "init.openedInNewTab": "{title} in neuem Tab geöffnet",
+  "init.waitBeforeChangingModels": "Warte die laufende Antwort ab, bevor du das Modell wechselst.",
+  "modelSelector.current": "Aktuell",
+  "modelSelector.noResults": "Keine Modelle gefunden",
+  "modelSelector.searchPlaceholder": "Modelle durchsuchen…",
+  "modelSelector.title": "Modell wählen",
+  "status.model.tooltip": "Modell wechseln"
 }

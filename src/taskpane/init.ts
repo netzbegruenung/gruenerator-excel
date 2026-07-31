@@ -16,6 +16,7 @@ import {
   ensureGruenratorGateway,
   disableLegacyProxy,
   purgeForeignCredentials,
+  purgeForeignModelCatalogs,
 } from "../gruenerator/gateway.js";
 import type { SessionData } from "../storage/local/types.js";
 
@@ -82,6 +83,7 @@ import {
 import {
   getStoredModelSwitchBehavior,
   setStoredModelSwitchBehavior,
+  shouldForkModelSwitch,
   type ModelSwitchBehavior,
 } from "../models/switch-behavior.js";
 import { getResolvedConventions } from "../conventions/store.js";
@@ -140,6 +142,7 @@ import {
 
 import { createContextInjector } from "./context-injection.js";
 import { pickDefaultModel } from "./default-model.js";
+import { openModelSelectorDialog } from "../ui/model-selector-dialog.js";
 import { resolveRuntimeModelSwap } from "./runtime-model-reconcile.js";
 import { getThinkingLevels, installKeyboardShortcuts } from "./keyboard-shortcuts.js";
 import { createQueueDisplay } from "./queue-display.js";
@@ -231,9 +234,10 @@ export async function initTaskpane(opts: {
   // Schlägt es fehl, startet die App trotzdem — dann fehlt nur das Modell, und
   // die Einstellungen zeigen den Hinweis auf den Zugangsschlüssel.
   try {
-    await ensureGruenratorGateway(customProviders);
     await disableLegacyProxy(settings);
     await purgeForeignCredentials(providerKeys, settings);
+    const gateway = await ensureGruenratorGateway(customProviders);
+    await purgeForeignModelCatalogs(modelCatalogs, gateway.providerName);
   } catch (error) {
     console.warn("[gruenerator] Gateway konnte nicht provisioniert werden:", error);
   }
@@ -1702,8 +1706,92 @@ export async function initTaskpane(opts: {
     },
   });
 
+  const applyModelSelection = async (runtimeId: string, nextModel: RuntimeModel): Promise<void> => {
+    const runtime = runtimeManager.getRuntime(runtimeId);
+    if (!runtime) {
+      showToast(t("init.sessionNotFound"));
+      return;
+    }
+
+    const currentModel = runtime.agent.state.model;
+    const sameIdentity = currentModel.provider === nextModel.provider
+      && currentModel.id === nextModel.id;
+    if (sameIdentity && areRuntimeModelsEquivalent(currentModel, nextModel)) {
+      return;
+    }
+
+    if (runtime.agent.state.isStreaming || runtime.actionQueue.isBusy()) {
+      showToast(t("init.waitBeforeChangingModels"));
+      return;
+    }
+
+    if (sameIdentity) {
+      runtime.agent.state.model = nextModel;
+      document.dispatchEvent(new CustomEvent("pi:model-changed"));
+      document.dispatchEvent(new CustomEvent("pi:status-update"));
+      requestAnimationFrame(() => sidebar.requestUpdate());
+      return;
+    }
+
+    const hasMessages = runtime.agent.state.messages.length > 0;
+    const behavior = getModelSwitchBehavior();
+
+    if (!shouldForkModelSwitch({ behavior, hasMessages })) {
+      runtime.agent.state.model = nextModel;
+      document.dispatchEvent(new CustomEvent("pi:model-changed"));
+      document.dispatchEvent(new CustomEvent("pi:status-update"));
+      requestAnimationFrame(() => sidebar.requestUpdate());
+      return;
+    }
+
+    const sourceTitle = resolveRuntimeTabTitle(runtimeId, runtime);
+    const modelForkTitle = `${sourceTitle} (${nextModel.id})`;
+
+    await cloneRuntimeToNewTab({
+      sourceRuntime: runtime,
+      targetModel: nextModel,
+      targetTitle: modelForkTitle,
+    });
+
+    showToast(t("init.openedInNewTab", { title: modelForkTitle }));
+  };
+
+  const openModelSelector = (): void => {
+    const activeRuntime = getActiveRuntime();
+    if (!activeRuntime) {
+      showToast(t("init.noActiveSession"));
+      return;
+    }
+
+    const targetRuntimeId = activeRuntime.runtimeId;
+    const currentModel = activeRuntime.agent.state.model;
+
+    void (async () => {
+      try {
+        await refreshConfiguredProviders();
+      } catch (error) {
+        console.warn("[auth] Failed to refresh providers before opening model selector:", error);
+      }
+
+      closeStatusPopover();
+
+      openModelSelectorDialog({
+        models: modelRuntime.models,
+        currentModel,
+        onSelect: (model) => {
+          void applyModelSelection(targetRuntimeId, model);
+        },
+      });
+
+      void refreshRuntimeModels().catch((error: DynamicValue) => {
+        console.warn("[models] Model refresh from selector failed:", error);
+      });
+    })();
+  };
+
   registerBuiltins({
     getActiveAgent,
+    openModelSelector,
     renameActiveSession: async (title: string) => {
       const activeRuntime = getActiveRuntime();
       if (!activeRuntime) {
@@ -2098,6 +2186,12 @@ export async function initTaskpane(opts: {
     const el = target;
 
     if (el.closest(".pi-status-popover")) {
+      return;
+    }
+
+    // Model picker
+    if (el.closest(".pi-status-model")) {
+      openModelSelector();
       return;
     }
 

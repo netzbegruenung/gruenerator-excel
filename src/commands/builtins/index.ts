@@ -4,6 +4,8 @@
 
 import { commandRegistry, type ActiveAgentProvider, type SlashCommand } from "../types.js";
 
+import { createModelCommands } from "./model.js";
+
 import { createSettingsCommands, type SettingsCommandActions } from "./settings.js";
 import { createExperimentalCommands } from "./experimental.js";
 import { createDebugCommands } from "./debug.js";
@@ -26,12 +28,17 @@ export interface BuiltinsContext
     SkillsCommandActions,
     FilesCommandActions {
   getActiveAgent: ActiveAgentProvider;
+  openModelSelector: () => void;
 }
 
 /** Register all built-in commands. Call once after runtime manager is ready. */
 export function registerBuiltins(context: BuiltinsContext): void {
   // Keep registration order stable: this is the order shown in the command menu.
   const builtins: SlashCommand[] = [
+    ...createModelCommands({
+      getActiveAgent: context.getActiveAgent,
+      openModelSelector: context.openModelSelector,
+    }),
     ...createSettingsCommands(context),
     ...createAddonsCommands(context),
     ...createToolsCommands(context),

@@ -114,6 +114,28 @@ export async function purgeForeignCredentials(
   }
 }
 
+/**
+ * Wirft zwischengespeicherte Modellkataloge fremder Anbieter weg.
+ *
+ * Der Katalog wird pro Anbieter gespeichert und überlebt einen Wechsel des
+ * Endpunkts. Als der Gateway noch direkt auf LiteLLM zeigte, landete dessen
+ * vollständige Liste im Speicher — inklusive der Embedding-Modelle
+ * (`nomic-embed-text`), die auf einen Chat-Request unbrauchbar antworten.
+ * Unser Endpunkt liefert eine kuratierte Liste; alles andere hat hier nichts
+ * mehr zu suchen.
+ */
+export async function purgeForeignModelCatalogs(
+  catalogs: { listProviderIds(): Promise<string[]>; delete(providerId: string): Promise<void> },
+  ownProviderName: string,
+): Promise<void> {
+  const providerIds = await catalogs.listProviderIds();
+  for (const providerId of providerIds) {
+    if (providerId !== ownProviderName) {
+      await catalogs.delete(providerId);
+    }
+  }
+}
+
 /** Ist ein Schlüssel hinterlegt? Steuert den Hinweis auf der Startseite. */
 export async function hasGruenratorApiKey(store: CustomProvidersStoreLike): Promise<boolean> {
   const gateway = await findGruenratorGateway(store);
