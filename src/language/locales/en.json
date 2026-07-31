@@ -1140,5 +1140,9 @@
   "gruenerator.access.endpoint_label": "Endpoint",
   "gruenerator.access.model_label": "Modell",
   "gruenerator.access.context_label": "Kontextfenster",
-  "gruenerator.access.context_value": "{tokens} Token"
+  "gruenerator.access.context_value": "{tokens} Token",
+  "gruenerator.access.status_drift": "Der Chat benutzt {endpoint} mit {model} — das weicht von der Konfiguration ab. Mit „Zurücksetzen“ korrigieren.",
+  "gruenerator.access.repair": "Zurücksetzen",
+  "gruenerator.access.repaired": "Endpoint und Modell zurückgesetzt.",
+  "gruenerator.access.repair_failed": "Zurücksetzen fehlgeschlagen."
 }

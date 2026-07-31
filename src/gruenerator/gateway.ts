@@ -117,13 +117,24 @@ export async function purgeForeignCredentials(
   providerKeys: { list(): Promise<string[]>; delete(provider: string): Promise<void> },
   settings: SettingsStore,
 ): Promise<void> {
-  const stored = await providerKeys.list();
+  // Jeder Eintrag einzeln: ein kaputter Altbestand darf nicht dazu führen, dass
+  // alles danach ungelöscht bleibt. Aus demselben Grund wirft diese Funktion
+  // nicht weiter — sie ist Hygiene, kein Startkriterium.
+  const stored = await providerKeys.list().catch(() => [] as string[]);
   for (const provider of stored) {
-    await providerKeys.delete(provider);
+    try {
+      await providerKeys.delete(provider);
+    } catch (error) {
+      console.warn(`[gruenerator] Anmeldung ${provider} blieb liegen:`, error);
+    }
   }
 
   for (const providerId of BROWSER_OAUTH_PROVIDERS) {
-    await clearOAuthCredentials(settings, providerId);
+    try {
+      await clearOAuthCredentials(settings, providerId);
+    } catch (error) {
+      console.warn(`[gruenerator] OAuth-Daten ${providerId} blieben liegen:`, error);
+    }
   }
 }
 

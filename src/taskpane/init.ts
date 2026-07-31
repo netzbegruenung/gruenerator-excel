@@ -231,15 +231,41 @@ export async function initTaskpane(opts: {
   const { providerKeys, sessions, settings, customProviders, modelCatalogs } = initAppStorage();
 
   // 1b. Grünerator-Gateway anlegen/aktualisieren, bevor Provider gelesen werden.
-  // Schlägt es fehl, startet die App trotzdem — dann fehlt nur das Modell, und
-  // die Einstellungen zeigen den Hinweis auf den Zugangsschlüssel.
+  //
+  // Jeder Schritt einzeln gekapselt, und das Provisionieren zuerst. Vorher lagen
+  // alle vier in einem try: warf einer der Aufräumschritte auf einem Altbestand,
+  // wurde der Gateway nie aktualisiert und behielt seinen alten Endpoint. Der
+  // Chat lief dann weiter gegen die Produktivadresse und meldete "Connection
+  // error", waehrend die Zugangsseite gruen zeigte — die prueft die
+  // Konfiguration, nicht den gespeicherten Gateway.
+  //
+  // Reihenfolge ist Absicht: das Provisionieren ist das Einzige, was die App
+  // zum Laufen braucht. Das Aufraeumen ist Hygiene und darf es nie mitreissen.
+  let gatewayProviderName: string | null = null;
   try {
-    await disableLegacyProxy(settings);
-    await purgeForeignCredentials(providerKeys, settings);
-    const gateway = await ensureGruenratorGateway(customProviders);
-    await purgeForeignModelCatalogs(modelCatalogs, gateway.providerName);
+    gatewayProviderName = (await ensureGruenratorGateway(customProviders)).providerName;
   } catch (error) {
     console.warn("[gruenerator] Gateway konnte nicht provisioniert werden:", error);
+  }
+
+  try {
+    await disableLegacyProxy(settings);
+  } catch (error) {
+    console.warn("[gruenerator] Alt-Proxy konnte nicht abgeschaltet werden:", error);
+  }
+
+  try {
+    await purgeForeignCredentials(providerKeys, settings);
+  } catch (error) {
+    console.warn("[gruenerator] Fremde Anmeldungen konnten nicht entfernt werden:", error);
+  }
+
+  if (gatewayProviderName !== null) {
+    try {
+      await purgeForeignModelCatalogs(modelCatalogs, gatewayProviderName);
+    } catch (error) {
+      console.warn("[gruenerator] Fremde Modellkataloge konnten nicht entfernt werden:", error);
+    }
   }
 
   // Initialize language from storage

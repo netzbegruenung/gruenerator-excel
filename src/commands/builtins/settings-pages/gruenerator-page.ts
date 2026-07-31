@@ -37,6 +37,7 @@ import {
 } from "../../../gruenerator/connection-test.js";
 import {
   clearGruenratorApiKey,
+  ensureGruenratorGateway,
   findGruenratorGateway,
   setGruenratorApiKey,
 } from "../../../gruenerator/gateway.js";
@@ -101,13 +102,42 @@ export function createGruenratorPage(): SettingsShellPage {
 
       /** Der zuletzt gespeicherte Schlüssel — Quelle für Maskierung und Test. */
       let storedKey = "";
-      try {
-        const gateway = await findGruenratorGateway(storage.customProviders);
-        storedKey = gateway?.apiKey ?? "";
-      } catch (error) {
-        // Anzeige ist Beiwerk; ein Lesefehler darf die Seite nicht blockieren.
-        console.warn("[gruenerator] Gateway konnte nicht gelesen werden:", error);
-      }
+      /**
+       * Endpoint und Modell, wie sie im gespeicherten Gateway stehen — also das,
+       * was der Chat tatsächlich anspricht.
+       *
+       * Bewusst nicht die Konstanten aus `config.ts`: die beiden können
+       * auseinanderlaufen, wenn das Provisionieren beim Start fehlschlägt. Ein
+       * Test gegen die Konstante meldet dann „Verbindung steht", während der
+       * Chat weiter gegen die alte Adresse läuft — genau so ist uns der Fehler
+       * einmal durchgerutscht.
+       */
+      let storedEndpoint = "";
+      let storedModel = "";
+
+      const readGateway = async (): Promise<void> => {
+        try {
+          const gateway = await findGruenratorGateway(storage.customProviders);
+          storedKey = gateway?.apiKey ?? "";
+          storedEndpoint = gateway?.endpointUrl ?? "";
+          storedModel = gateway?.modelId ?? "";
+        } catch (error) {
+          // Anzeige ist Beiwerk; ein Lesefehler darf die Seite nicht blockieren.
+          console.warn("[gruenerator] Gateway konnte nicht gelesen werden:", error);
+        }
+      };
+
+      await readGateway();
+
+      const effectiveEndpoint = (): string =>
+        storedEndpoint.length > 0 ? storedEndpoint : GRUENERATOR_ENDPOINT_URL;
+      const effectiveModel = (): string =>
+        storedModel.length > 0 ? storedModel : GRUENERATOR_MODEL_ID;
+
+      /** Weicht der gespeicherte Gateway von der Konfiguration ab? */
+      const hasDrift = (): boolean =>
+        (storedEndpoint.length > 0 && storedEndpoint !== GRUENERATOR_ENDPOINT_URL)
+        || (storedModel.length > 0 && storedModel !== GRUENERATOR_MODEL_ID);
 
       // ── Status ────────────────────────────────────────────────────────────
       const statusSlot = document.createElement("div");
@@ -117,6 +147,20 @@ export function createGruenratorPage(): SettingsShellPage {
       };
 
       const showStoredKeyStatus = (): void => {
+        // Abweichung zuerst: sie erklaert, warum ein gruener Test und ein
+        // fehlschlagender Chat zusammenpassen koennen.
+        if (hasDrift()) {
+          setStatus({
+            tone: "warn",
+            icon: "!",
+            message: t("gruenerator.access.status_drift", {
+              endpoint: effectiveEndpoint(),
+              model: effectiveModel(),
+            }),
+          });
+          return;
+        }
+
         setStatus(
           storedKey.length > 0
             ? {
@@ -168,6 +212,9 @@ export function createGruenratorPage(): SettingsShellPage {
         save.disabled = input.value.trim().length === 0;
         test.disabled = keyForTest().length === 0;
         remove.hidden = storedKey.length === 0;
+        // Nur zeigen, wenn es etwas zu reparieren gibt: abweichende Werte oder
+        // gar kein Gateway (dann ist das Provisionieren beim Start gescheitert).
+        repair.hidden = !hasDrift() && storedEndpoint.length > 0;
       };
 
       input.addEventListener("input", syncButtons);
@@ -206,9 +253,11 @@ export function createGruenratorPage(): SettingsShellPage {
         test.textContent = t("gruenerator.access.testing");
         setStatus({ tone: "info", icon: "…", message: t("gruenerator.access.testing_status") });
 
+        // Gegen den gespeicherten Gateway, nicht gegen die Konstante — sonst
+        // prueft der Test eine andere Adresse als die, die der Chat benutzt.
         void testGruenratorConnection(key, {
-          endpointUrl: GRUENERATOR_ENDPOINT_URL,
-          modelId: GRUENERATOR_MODEL_ID,
+          endpointUrl: effectiveEndpoint(),
+          modelId: effectiveModel(),
         })
           .then((result) => {
             setStatus(describeResult(result));
@@ -239,30 +288,57 @@ export function createGruenratorPage(): SettingsShellPage {
           });
       });
 
-      actions.append(save, test, remove);
+      // Setzt Endpoint und Modell aus der Konfiguration neu — der Ausweg, wenn
+      // das Provisionieren beim Start fehlgeschlagen ist.
+      const repair = createButton(t("gruenerator.access.repair"));
+      repair.addEventListener("click", () => {
+        repair.disabled = true;
+        void ensureGruenratorGateway(storage.customProviders)
+          .then(async () => {
+            await readGateway();
+            document.dispatchEvent(new CustomEvent("pi:providers-changed"));
+            renderFacts();
+            syncButtons();
+            showStoredKeyStatus();
+            showToast(t("gruenerator.access.repaired"));
+          })
+          .catch((error: DynamicValue) => {
+            console.warn("[gruenerator] Gateway konnte nicht repariert werden:", error);
+            showToast(t("gruenerator.access.repair_failed"));
+          })
+          .finally(() => {
+            repair.disabled = false;
+          });
+      });
 
-      // ── Fest eingestellte Werte ───────────────────────────────────────────
-      // Im Klartext, weil sie bei jedem Fehlschlag die erste Rückfrage sind.
+      actions.append(save, test, remove, repair);
+
+      // ── Tatsaechlich benutzte Werte ───────────────────────────────────────
+      // Aus dem gespeicherten Gateway, nicht aus der Konfiguration: bei jedem
+      // Fehlschlag ist genau das die erste Rueckfrage — und der Unterschied
+      // zwischen beiden war schon einmal die Ursache.
       const facts = document.createElement("div");
       facts.className = "pi-overlay-surface";
-      facts.append(
-        createConfigRow(
-          t("gruenerator.access.endpoint_label"),
-          createConfigValue(GRUENERATOR_ENDPOINT_URL),
-        ),
-        createConfigRow(
-          t("gruenerator.access.model_label"),
-          createConfigValue(GRUENERATOR_MODEL_ID),
-        ),
-        createConfigRow(
-          t("gruenerator.access.context_label"),
-          createConfigValue(
-            t("gruenerator.access.context_value", {
-              tokens: GRUENERATOR_CONTEXT_WINDOW.toLocaleString("de-DE"),
-            }),
+
+      function renderFacts(): void {
+        facts.replaceChildren(
+          createConfigRow(
+            t("gruenerator.access.endpoint_label"),
+            createConfigValue(effectiveEndpoint()),
           ),
-        ),
-      );
+          createConfigRow(t("gruenerator.access.model_label"), createConfigValue(effectiveModel())),
+          createConfigRow(
+            t("gruenerator.access.context_label"),
+            createConfigValue(
+              t("gruenerator.access.context_value", {
+                tokens: GRUENERATOR_CONTEXT_WINDOW.toLocaleString("de-DE"),
+              }),
+            ),
+          ),
+        );
+      }
+
+      renderFacts();
 
       card.append(keyRow, hint, actions);
       ctx.body.append(statusSlot, card, facts);
