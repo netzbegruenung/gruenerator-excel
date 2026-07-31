@@ -44,16 +44,25 @@ export const GRUENERATOR_ENDPOINT_URL =
 export const GRUENERATOR_MODEL_ID = "verdigado-think";
 
 /**
- * 64k, NICHT die 128k des Modell-Tags.
+ * 120k — und bewusst nicht die 128k des Modell-Tags.
  *
- * Die Ollama-gestützten verdigado-Lanes kürzen zu lange Prompts **still**:
- * bei ~350k Input antworten sie mit HTTP 200 und `prompt_tokens: 65538` —
- * die Signatur eines `num_ctx` von 65536, unabhängig davon, was das Tag
- * verspricht. Ein zu hoher Wert kostet hier keinen Fehler, sondern Kontext:
- * das Add-in packt die Arbeitsmappe voll und bekommt eine Antwort auf einem
- * Fragment. Das Grünerator-Backend fährt aus demselben Grund CTX_VERDIGADO
- * = 64_000 (apps/api/routes/chat/agents/providers.ts).
+ * Die Ollama-gestützten verdigado-Lanes kürzen einen zu langen Prompt
+ * **still**: sie antworten mit HTTP 200, aber `prompt_tokens` fällt auf ~65.5k
+ * zurück, die Signatur eines `num_ctx` von 65536. Ein zu hoher Wert kostet
+ * hier also keinen Fehler, sondern Kontext — das Add-in packt die
+ * Arbeitsmappe voll und bekommt eine Antwort auf einem Fragment.
  *
- * Nur zusammen mit einem frischen Needle-Test und einer Overflow-Probe erhöhen.
+ * Gemessen am 31.07.2026 gegen `verdigado-think`, Nadel am Anfang des Prompts:
+ *
+ *   ~130k gesendet → prompt_tokens 122.956, Nadel gefunden
+ *   ~155k gesendet → prompt_tokens  65.539, Nadel weg
+ *
+ * Die Kante liegt also zwischen beiden. 120k liegt unter dem höchsten
+ * verifizierten Wert und lässt Luft; 128k läge im ungemessenen Bereich direkt
+ * davor, und ein Fehlgriff dort ist unsichtbar.
+ *
+ * Das Grünerator-Backend führt denselben Wert als CTX_VERDIGADO
+ * (apps/api/routes/chat/agents/providers.ts) — beide zusammen ändern.
+ * Erhöhen nur mit einem frischen Needle-Test wie oben, nie nach Tag-Angabe.
  */
-export const GRUENERATOR_CONTEXT_WINDOW = 64_000;
+export const GRUENERATOR_CONTEXT_WINDOW = 120_000;

@@ -932,6 +932,13 @@ export async function initTaskpane(opts: {
   });
 
   document.addEventListener(PI_EXECUTION_MODE_CHANGED_EVENT, () => {
+    // Die Statusleiste zeichnet nur auf "pi:status-update" neu. Ohne diese
+    // Zeile hing ihre Beschriftung an einem Nebeneffekt des
+    // Capability-Refresh: im Browser kam der schnell genug, in Excel nicht —
+    // dort blieb "Auto" stehen, obwohl "Bestätigen" aktiv war. Ein
+    // Bedienelement, das den falschen Zustand zeigt, ist schlimmer als eines,
+    // das gar nichts zeigt.
+    document.dispatchEvent(new CustomEvent("pi:status-update"));
     void refreshCapabilitiesForAllRuntimes();
   });
 

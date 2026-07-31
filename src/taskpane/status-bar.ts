@@ -18,12 +18,40 @@ import {
   STATUS_CONTEXT_WARNING_ATTR,
   STATUS_CONTEXT_WARNING_SEVERITY_ATTR,
 } from "./status-context.js";
+import { getThinkingLevelsForModel } from "../models/thinking-levels.js";
+
 import type { RuntimeLockState } from "./session-runtime-manager.js";
 import { getThinkingLevelLabel } from "./thinking-display.js";
 
 export type ActiveAgentProvider = () => Agent | null;
 export type ActiveLockStateProvider = () => RuntimeLockState;
 export type ActiveExecutionModeProvider = () => ExecutionMode;
+
+/**
+ * Ab diesem Verbrauch erscheint die Kontextanzeige.
+ *
+ * Darunter meldet sie eine Zahl, aus der nichts folgt — handeln kann man erst,
+ * wenn es eng wird. Der Wert liegt unter der ersten Warnstufe, damit die
+ * Anzeige da ist, bevor es dringend wird.
+ */
+export const CONTEXT_PILL_VISIBLE_FROM_PCT = 75;
+
+/** Ist die Kontextanzeige bei diesem Verbrauch sichtbar? */
+export function shouldShowContextPill(pct: number): boolean {
+  return pct >= CONTEXT_PILL_VISIBLE_FROM_PCT;
+}
+
+/**
+ * Kurzform für die Statusleiste: `verdigado-think` → `think`.
+ *
+ * Nur für die Anzeige in der schmalen Leiste. Die Modellauswahl zeigt weiter
+ * die vollen Kennungen — dort ist Platz, und dort muss man sie wiedererkennen.
+ * Nur das bekannte Präfix fällt weg, damit ein künftiger Name mit Bindestrich
+ * nicht versehentlich beschnitten wird.
+ */
+export function shortenModelLabel(label: string): string {
+  return label.startsWith("verdigado-") ? label.slice("verdigado-".length) : label;
+}
 
 function adjustContextTooltipAlignment(statusBar: HTMLElement): void {
   const trigger = statusBar.querySelector<HTMLElement>(".pi-status-ctx--trigger");
@@ -74,7 +102,7 @@ function renderStatusBar(
   // Model alias
   const model = state.model;
   const modelAlias = model ? (model.name || model.id) : t("status.select_model");
-  const modelAliasEscaped = escapeHtml(modelAlias);
+  const modelAliasEscaped = escapeHtml(model ? shortenModelLabel(modelAlias) : modelAlias);
 
   // Context usage
   //
@@ -138,15 +166,32 @@ function renderStatusBar(
   const ctxPopoverTokens = escapeAttr(ctxTokenDetail);
   const ctxPopoverWarnText = ctxWarningText.length > 0 ? escapeAttr(ctxWarningText) : "";
 
+  // Denkstufe nur zeigen, wenn es etwas zu wählen gibt. Bei einem Modell ohne
+  // Reasoning bietet die Liste ausschließlich "Aus" an — ein Knopf, der ein
+  // Menü mit einem einzigen, nicht abwählbaren Eintrag öffnet.
+  const showThinking = getThinkingLevelsForModel(state.model ?? null).length > 1;
+
+  // Die Kontextanzeige ist erst interessant, wenn es eng wird. Darunter steht
+  // dort eine Zahl, die nie zu einer Handlung führt, und drängt die beiden
+  // Bedienelemente daneben in die zweite Zeile.
+  const showContext = shouldShowContextPill(pct);
+
+  const thinkingButton = showThinking
+    ? `<button type="button" class="pi-status-thinking pi-status-clickable" data-tooltip="${thinkingTooltip}" aria-label="${escapeAttr(t("status.thinking.aria", { level: thinkingLevel }))}">${brainSvg} ${escapeHtml(thinkingLevel)}<span class="pi-status-affordance" aria-hidden="true">${affordanceChevronSvg}</span></button>`
+    : "";
+
+  const contextButton = showContext
+    ? `<button type="button" class="pi-status-ctx pi-status-ctx--trigger pi-status-clickable has-tooltip" ${STATUS_CONTEXT_DESC_ATTR}="${ctxPopoverDesc}" ${STATUS_CONTEXT_TOKENS_ATTR}="${ctxPopoverTokens}" ${STATUS_CONTEXT_WARNING_ATTR}="${ctxPopoverWarnText}" ${STATUS_CONTEXT_WARNING_SEVERITY_ATTR}="${ctxWarningSeverity}" aria-label="${escapeAttr(t("status.context.aria", { pct, label: ctxLabel }))}"><span class="pi-status-ctx__pct ${ctxColor}">${pct}%</span><span class="pi-status-ctx__sep">/</span><span class="pi-status-ctx__limit">${ctxLabel}</span>${usageDebug}<span class="pi-status-affordance" aria-hidden="true">${affordanceChevronSvg}</span><span class="pi-tooltip"><span class="pi-tooltip__desc">${escapeHtml(ctxDescription)}</span><span class="pi-tooltip__tokens">${escapeHtml(ctxTokenDetail)}</span>${ctxWarning}</span></button>`
+    : "";
+
   const nextMarkup = `
     <div class="pi-status-main">
       <button type="button" class="pi-status-model pi-status-clickable pi-status-tooltip--left" data-tooltip="${escapeAttr(t("status.model.tooltip"))}">
-        <span class="pi-status-model__mark">π</span>
         <span class="pi-status-model__name">${modelAliasEscaped}</span>
         ${chevronSvg}
       </button>
-      <button type="button" class="pi-status-thinking pi-status-clickable" data-tooltip="${thinkingTooltip}" aria-label="${escapeAttr(t("status.thinking.aria", { level: thinkingLevel }))}">${brainSvg} ${escapeHtml(thinkingLevel)}<span class="pi-status-affordance" aria-hidden="true">${affordanceChevronSvg}</span></button>
-      <button type="button" class="pi-status-ctx pi-status-ctx--trigger pi-status-clickable has-tooltip" ${STATUS_CONTEXT_DESC_ATTR}="${ctxPopoverDesc}" ${STATUS_CONTEXT_TOKENS_ATTR}="${ctxPopoverTokens}" ${STATUS_CONTEXT_WARNING_ATTR}="${ctxPopoverWarnText}" ${STATUS_CONTEXT_WARNING_SEVERITY_ATTR}="${ctxWarningSeverity}" aria-label="${escapeAttr(t("status.context.aria", { pct, label: ctxLabel }))}"><span class="pi-status-ctx__pct ${ctxColor}">${pct}%</span><span class="pi-status-ctx__sep">/</span><span class="pi-status-ctx__limit">${ctxLabel}</span>${usageDebug}<span class="pi-status-affordance" aria-hidden="true">${affordanceChevronSvg}</span><span class="pi-tooltip"><span class="pi-tooltip__desc">${escapeHtml(ctxDescription)}</span><span class="pi-tooltip__tokens">${escapeHtml(ctxTokenDetail)}</span>${ctxWarning}</span></button>
+      ${thinkingButton}
+      ${contextButton}
       ${lockBadge}
     </div>
     <div class="pi-status-side">
@@ -166,6 +211,11 @@ function renderStatusBar(
     usageDebug,
     lockState,
     executionMode,
+    // Muessen in die Signatur: ohne sie bleibt ein einmal ausgeblendeter Knopf
+    // ausgeblendet, wenn sich sonst nichts aendert — der Neuaufbau wird dann
+    // uebersprungen.
+    showThinking,
+    showContext,
   });
 
   if (el.getAttribute("data-status-signature") === renderSignature) {

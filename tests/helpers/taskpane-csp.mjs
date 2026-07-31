@@ -55,3 +55,19 @@ export async function readTaskpaneConnectSrcTokens() {
 export async function readTaskpaneScriptSrcTokens() {
   return readTaskpaneCspDirectiveTokens("script-src");
 }
+
+/** Die Richtlinie, wie sie in `vercel.json` steht. */
+export async function readVercelCspValue() {
+  const raw = await readFile(new URL("../../vercel.json", import.meta.url), "utf8");
+  const parsed = JSON.parse(raw);
+  const entry = parsed.headers.find((e) => e.source === "/src/taskpane.html");
+  return entry.headers.find((h) => h.key === "Content-Security-Policy").value;
+}
+
+/** Die Richtlinie, wie sie das Container-nginx setzt. */
+export async function readDockerCspValue() {
+  const raw = await readFile(new URL("../../docker/nginx.conf", import.meta.url), "utf8");
+  const match = raw.match(/add_header Content-Security-Policy "([^"]+)"/);
+  if (!match) throw new Error("docker/nginx.conf setzt keine Content-Security-Policy");
+  return match[1];
+}
