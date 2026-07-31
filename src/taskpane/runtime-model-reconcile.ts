@@ -10,8 +10,11 @@
  *
  * A runtime whose model belongs to a provider with no configured credentials
  * cannot complete any request, so swapping it to the (recomputed) default
- * model is strictly an improvement. Runtimes whose provider is still
- * configured are never touched.
+ * model is strictly an improvement.
+ *
+ * Geprüft wird auf **Modell**ebene, nicht auf Anbieterebene: ein Modell kann
+ * aus dem Angebot fallen, während sein Anbieter bestehen bleibt. Genau das
+ * passiert, wenn sich die Modellliste hinter einem Gateway ändert.
  */
 
 import type { Api, Model } from "@earendil-works/pi-ai";
@@ -22,9 +25,19 @@ export interface RuntimeModelSwap {
 }
 
 export function resolveRuntimeModelSwap(opts: {
-  /** Only the provider of the runtime's current model matters here. */
-  currentModel: { provider: string };
+  currentModel: { provider: string; id: string };
   availableProviders: readonly string[];
+  /**
+   * Alle derzeit angebotenen Modelle. Fehlt das Modell der Sitzung darin, wird
+   * getauscht — auch wenn sein Anbieter noch da ist.
+   *
+   * Dieser Fork bietet genau ein Modell an, und die Modellliste kann sich
+   * ändern, ohne dass der Anbietername sich ändert: eine Sitzung, die noch auf
+   * einem früher entdeckten Modell steht (`gemma` aus LiteLLMs eigener Liste),
+   * schickt dessen Namen weiter und bekommt vom Endpoint ein 400. Auf
+   * Anbieterebene fiele das nie auf.
+   */
+  availableModels: readonly { provider: string; id: string }[];
   defaultModel: Model<Api>;
   /**
    * True when the runtime is doing any work — streaming OR processing queued
@@ -34,7 +47,7 @@ export function resolveRuntimeModelSwap(opts: {
    */
   isBusy: boolean;
 }): RuntimeModelSwap | null {
-  const { currentModel, availableProviders, defaultModel, isBusy } = opts;
+  const { currentModel, availableProviders, availableModels, defaultModel, isBusy } = opts;
 
   // Never yank the model out from under a working session (streaming or
   // queue-busy — e.g. /compact, auto-compaction, queued prompts).
@@ -43,8 +56,11 @@ export function resolveRuntimeModelSwap(opts: {
   // No providers configured — nothing usable to swap to.
   if (availableProviders.length === 0) return null;
 
-  // Current provider still has credentials — leave the session alone.
-  if (availableProviders.includes(currentModel.provider)) return null;
+  // Das Modell der Sitzung wird weiterhin angeboten — nichts zu tun.
+  const stillOffered = availableModels.some(
+    (model) => model.provider === currentModel.provider && model.id === currentModel.id,
+  );
+  if (stillOffered) return null;
 
   // Only swap onto a model whose provider is actually usable, otherwise we
   // would just trade one wrong API-key prompt for another.

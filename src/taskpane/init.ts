@@ -309,12 +309,20 @@ export async function initTaskpane(opts: {
   // 2. Resolve available providers from one browser-native runtime. Static,
   // custom, dynamically discovered and extension providers share this path.
   let availableProviders: string[] = [];
+  /** Wie availableProviders, nur eine Ebene feiner — der Abgleich braucht die
+   *  Modell-IDs, weil ein Modell aus dem Angebot fallen kann, ohne dass sein
+   *  Anbieter verschwindet. */
+  let availableModelIdentities: { provider: string; id: string }[] = [];
   let defaultModel = pickDefaultModel(modelRuntime.models, [], null);
 
   const updateAvailableProviderState = async (): Promise<void> => {
     const availableModels = await modelRuntime.models.getAvailable();
     const combinedProviders = new Set(availableModels.map((model) => model.provider));
     availableProviders = Array.from(combinedProviders);
+    availableModelIdentities = availableModels.map((model) => ({
+      provider: model.provider,
+      id: model.id,
+    }));
     defaultModel = pickDefaultModel(modelRuntime.models, availableProviders, null);
     setActiveProviders(combinedProviders);
     document.dispatchEvent(new Event("pi:models-changed"));
@@ -634,6 +642,7 @@ export async function initTaskpane(opts: {
       const swap = resolveRuntimeModelSwap({
         currentModel,
         availableProviders,
+        availableModels: availableModelIdentities,
         defaultModel,
         isBusy: runtime.agent.state.isStreaming || runtime.actionQueue.isBusy(),
       });
