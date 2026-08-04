@@ -1,10 +1,10 @@
-# Pi for Excel
+# Grünerator für Excel
 
-English | [简体中文](./README.zh-CN.md)
+AI sidebar add-in for Microsoft Excel, built for Bündnis 90/Die Grünen. This is [netzbegruenung](https://github.com/netzbegruenung)'s fork of [Pi for Excel](https://github.com/tmustier/pi-for-excel), wired up to the [Grünerator](https://github.com/netzbegruenung/Gruenerator) backend so party staff can sign in with their existing Grünerator access instead of bringing their own API keys.
 
-Open-source, multi-model AI sidebar add-in for Microsoft Excel. Powered by [Pi](https://pi.dev).
+Grünerator für Excel is an AI agent that lives inside Excel. It reads your workbook, makes changes, and does research — through the Grünerator gateway by default, or with your own provider credentials if you prefer.
 
-Pi for Excel is an AI agent that lives inside Excel. It reads your workbook, makes changes, and does research — using any model you choose. Bring your own API key or OAuth login for Anthropic, OpenAI, Google Gemini, or GitHub Copilot.
+Deployed at `https://excel.gruenerator.eu`. See [DEPLOYMENT.md](DEPLOYMENT.md) for how the taskpane, the Grünerator backend, and the Docker/Salt rollout fit together, and [docs/upstream-divergences.md](docs/upstream-divergences.md) for where this fork intentionally departs from upstream Pi behavior.
 
 ## Features
 
@@ -29,12 +29,7 @@ Pi for Excel is an AI agent that lives inside Excel. It reads your workbook, mak
 | `conventions` | Configurable formatting defaults (currency, negatives, zeros, decimal places) |
 | `skills` | Bundled Agent Skills for task-specific workflows |
 
-**Multi-model support** — use any supported provider; switch models mid-conversation:
-- **Anthropic** (Claude) — API key or OAuth
-- **OpenAI** / **OpenAI Codex** — API key
-- **Google Gemini** — API key
-- **GitHub Copilot** — OAuth
-- **Custom OpenAI-compatible gateways** — configure endpoint + model + API key in `/settings`
+**Grünerator gateway** — signs in against the Grünerator backend (`https://gruenerator.eu/api/v1`) so party staff don't need their own model API keys. A custom OpenAI-compatible gateway can still be configured in `/settings` for other providers, and BYO-key/OAuth for Anthropic, OpenAI, Google Gemini, and GitHub Copilot remain available.
 
 **Session management** — multiple session tabs per workbook, auto-save/restore, session history, `/resume` to pick up where you left off.
 
@@ -62,10 +57,10 @@ Pi for Excel is an AI agent that lives inside Excel. It reads your workbook, mak
 
 ## Install
 
-1. Download [`manifest.prod.xml`](https://pi-for-excel.vercel.app/manifest.prod.xml)
+1. Download [`manifest.prod.xml`](https://excel.gruenerator.eu/manifest.prod.xml)
 2. Add it to Excel — see [**install guide**](docs/install.md) for step-by-step instructions (macOS + Windows)
-3. Click **Open Pi** in the ribbon
-4. Connect a provider (API key or OAuth), or configure a custom OpenAI-compatible gateway in `/settings`
+3. Click **Open Grünerator** in the ribbon
+4. Sign in with your Grünerator account, or configure a different provider/gateway in `/settings`
 5. Start chatting — try `What sheets do I have?` or `Summarize my current selection`
 
 ## Developer Quick Start
@@ -78,8 +73,8 @@ Pi for Excel is an AI agent that lives inside Excel. It reads your workbook, mak
 ### Setup
 
 ```bash
-git clone https://github.com/tmustier/pi-for-excel.git
-cd pi-for-excel
+git clone https://github.com/netzbegruenung/gruenerator-excel.git
+cd gruenerator-excel
 npm install
 
 # Generate local HTTPS certs (Office.js requires HTTPS)
@@ -107,7 +102,7 @@ Then sideload the dev manifest into Excel:
 ```bash
 cp manifest.xml ~/Library/Containers/com.microsoft.Excel/Data/Documents/wef/
 ```
-Then open Excel → **Insert** → **My Add-ins** → **Pi for Excel**.
+Then open Excel → **Insert** → **My Add-ins** → **Grünerator für Excel**.
 
 **Windows** ([Microsoft docs](https://learn.microsoft.com/en-us/office/dev/add-ins/testing/create-a-network-shared-folder-catalog-for-task-pane-and-content-add-ins)):
 
@@ -116,13 +111,13 @@ Windows desktop Excel can't upload a manifest directly — it installs from a tr
 1. Share a local folder (folder **Properties** → **Sharing** → **Share**) and note its network path.
 2. In Excel: **File** → **Options** → **Trust Center** → **Trust Center Settings** → **Trusted Add-in Catalogs** → add the network path as **Catalog Url**, tick **Show in Menu**, restart Excel.
 3. Copy `manifest.xml` into the shared folder.
-4. **Home** → **Add-ins** → **Advanced** → **SHARED FOLDER** → **Pi for Excel**.
+4. **Home** → **Add-ins** → **Advanced** → **SHARED FOLDER** → **Grünerator für Excel**.
 
 **Excel on the web** ([Microsoft docs](https://learn.microsoft.com/en-us/office/dev/add-ins/testing/sideload-office-add-ins-for-testing)):
 
 **Home** → **Add-ins** → **More Settings** → **Upload My Add-in** → select `manifest.xml`.
 
-The dev manifest points to `https://localhost:3141`. The production manifest (`manifest.prod.xml`) points to the hosted Vercel deployment.
+The dev manifest points to `https://localhost:3141`. The production manifest (`manifest.prod.xml`) points to the hosted deployment at `https://excel.gruenerator.eu`.
 
 ### Useful commands
 
@@ -144,21 +139,13 @@ The dev manifest points to `https://localhost:3141`. The production manifest (`m
 
 Some OAuth token endpoints are blocked by CORS inside Office webviews. If OAuth login fails:
 
-1. User setup command: `npx pi-for-excel-proxy` (or `curl -fsSL https://piforexcel.com/proxy | sh` if Node is missing)
-2. Dev/source setup command: `npm run proxy:https` (defaults to `https://localhost:3003`; if 3003 is busy for another service, copy the random port printed in the terminal)
-3. In Pi → `/settings` → **Proxy** → enable and set the printed URL
-4. Retry login
+1. Dev/source setup command: `npm run proxy:https` (defaults to `https://localhost:3003`; if 3003 is busy for another service, copy the random port printed in the terminal)
+2. In the sidebar → `/settings` → **Proxy** → enable and set the printed URL
+3. Retry login
 
-API-key auth generally works without the proxy.
+API-key auth and the Grünerator gateway generally work without the proxy.
 
 ### Local bridges (Python / tmux)
-
-Use one-command local bridge helpers:
-
-- Python / LibreOffice bridge: `npx pi-for-excel-python-bridge` (default URL `https://localhost:3340`, real mode)
-- tmux bridge: `npx pi-for-excel-tmux-bridge` (default URL `https://localhost:3341`, real mode)
-
-In Pi, these localhost bridge URLs are used by default. Configure `/experimental ...-bridge-url` only when you want a non-default URL.
 
 Real-mode prerequisites:
 
@@ -166,33 +153,21 @@ Real-mode prerequisites:
 - LibreOffice (`soffice` or `libreoffice`) is required for `libreoffice_convert`
 - `tmux` is required for the tmux bridge real mode
 
-Optional assisted install (macOS/Homebrew):
-
-- `npx pi-for-excel-python-bridge --install-missing`
-- `npx pi-for-excel-tmux-bridge --install-missing`
-
-Manual macOS install:
-
-```bash
-brew install tmux
-brew install --cask libreoffice
-```
+Run from a source checkout via `npm run python:bridge:https` and `npm run tmux:bridge:https`. Configure `/experimental ...-bridge-url` only when you need a non-default URL.
 
 To force safe simulated mode instead:
 
-- `PYTHON_BRIDGE_MODE=stub npx pi-for-excel-python-bridge`
-- `TMUX_BRIDGE_MODE=stub npx pi-for-excel-tmux-bridge`
-
-Source-checkout alternatives remain available via `npm run python:bridge:https` and `npm run tmux:bridge:https`.
+- `PYTHON_BRIDGE_MODE=stub npm run python:bridge:https`
+- `TMUX_BRIDGE_MODE=stub npm run tmux:bridge:https`
 
 ## Architecture
 
-Pi for Excel is a single-page Office taskpane add-in built with:
+Grünerator für Excel is a single-page Office taskpane add-in built with:
 
 - **[Vite](https://vite.dev/)** — dev server + production bundler
 - **[Lit](https://lit.dev/)** — web components for the sidebar UI
 - **[pi-agent-core](https://www.npmjs.com/package/@earendil-works/pi-agent-core)** — agent runtime (tool loop, streaming, state management)
-- **[pi-ai](https://www.npmjs.com/package/@earendil-works/pi-ai)** — multi-provider LLM abstraction (Anthropic, OpenAI, Google, GitHub Copilot)
+- **[pi-ai](https://www.npmjs.com/package/@earendil-works/pi-ai)** — multi-provider LLM abstraction (Anthropic, OpenAI, Google, GitHub Copilot, plus the Grünerator gateway)
 - **[pi-web-ui](https://www.npmjs.com/package/@earendil-works/pi-web-ui)** — shared web UI components (message rendering, storage, settings dialogs)
 - **[Office.js](https://learn.microsoft.com/en-us/office/dev/add-ins/)** — Excel workbook API
 
@@ -207,10 +182,10 @@ src/
 ├── tools/             # 16 core tools + feature-flagged tools + registry
 ├── prompt/            # System prompt builder
 ├── context/           # Workbook blueprint cache, selection/change tracking
-├── auth/              # OAuth providers, API proxy, credential restore
+├── auth/              # OAuth providers, API proxy, credential restore, Grünerator gateway
 ├── models/            # Model ordering + version scoring
 ├── ui/                # Sidebar component, tool renderers, theme CSS
-│   └── theme/         # Design tokens, component styles (DM Sans + teal-green palette)
+│   └── theme/         # Design tokens, component styles
 ├── commands/          # Slash command registry + builtins
 ├── extensions/        # Extension store, sandbox runtime, permissions
 ├── integrations/      # Web Search + MCP Gateway integration catalog
@@ -233,7 +208,7 @@ scripts/               # Dev helpers — CORS proxy, tmux/python bridges, manife
 pkg/proxy/             # Publishable npm CLI package: `pi-for-excel-proxy`
 pkg/python-bridge/     # Publishable npm CLI package: `pi-for-excel-python-bridge`
 pkg/tmux-bridge/       # Publishable npm CLI package: `pi-for-excel-tmux-bridge`
-tests/                 # Unit + security tests (~50 test files)
+tests/                 # Unit + security tests
 docs/                  # Current docs (install/deploy/features/policy) + archive/ for historical plans
 skills/                # Bundled Agent Skill definitions (web-search, mcp-gateway, tmux-bridge, python-bridge)
 public/assets/         # Add-in icons (16/32/80/128px)
@@ -250,28 +225,34 @@ public/assets/         # Add-in icons (16/32/80/128px)
 
 ## Deployment
 
-The production build is a static site deployed to [Vercel](https://vercel.com). See [docs/deploy-vercel.md](docs/deploy-vercel.md) for maintainer setup.
+The production build is a static Vite bundle, containerized (`Dockerfile`, `docker/`) and shipped via GitHub Actions (`.github/workflows/build-image.yml`) to `ghcr.io/netzbegruenung/gruenerator-excel`, then rolled out through the `gruenerator-docker` Salt state to `https://excel.gruenerator.eu`.
 
-Users install by downloading `manifest.prod.xml` and uploading it in Excel — the manifest points to the hosted Vercel URL. Updates are automatic (close and reopen the taskpane).
+Model access goes to the Grünerator backend (`netzbegruenung/Gruenerator`, repo) at `https://gruenerator.eu/api/v1` — cross-origin from the taskpane, so both the CSP `connect-src` and the backend CORS allowlist must include `excel.gruenerator.eu`. See [DEPLOYMENT.md](DEPLOYMENT.md) for the full rollout, allowlist, and API-key details.
+
+Users install by downloading `manifest.prod.xml` and uploading it in Excel — the manifest points to the hosted deployment. Updates are automatic (close and reopen the taskpane).
 
 ## Documentation
 
 | Doc | Description |
 |---|---|
+| [DEPLOYMENT.md](DEPLOYMENT.md) | Grünerator-specific rollout: hosting, CORS/CSP allowlists, Salt states, API keys |
 | [docs/install.md](docs/install.md) | Non-technical install guide |
-| [docs/deploy-vercel.md](docs/deploy-vercel.md) | Hosted deployment (Vercel) |
+| [docs/upstream-divergences.md](docs/upstream-divergences.md) | Where this fork intentionally diverges from upstream Pi behavior |
 | [docs/extensions.md](docs/extensions.md) | Extension authoring guide |
 | [docs/integrations-external-tools.md](docs/integrations-external-tools.md) | Web Search + MCP integration setup |
 | [docs/security-threat-model.md](docs/security-threat-model.md) | Security threat model |
 | [docs/compaction.md](docs/compaction.md) | Session compaction (`/compact`) |
 | [src/tools/DECISIONS.md](src/tools/DECISIONS.md) | Tool behavior decisions log |
 | [src/ui/README.md](src/ui/README.md) | UI architecture + Tailwind v4 notes |
+| [ROLLOUT.md](ROLLOUT.md) | Rollout plan / status |
 
 ## Credits
 
-- [Pi](https://github.com/badlogic/pi-mono) by [@badlogic](https://github.com/badlogic) (Mario Zechner) — the agent framework powering this project. Pi for Excel uses pi-agent-core, pi-ai, and pi-web-ui for the agent loop, LLM abstraction, and session storage.
+This is a fork of [Pi for Excel](https://github.com/tmustier/pi-for-excel) by [@tmustier](https://github.com/tmustier) (Thomas Mustier), adapted for Bündnis 90/Die Grünen with a Grünerator-backed gateway and a Docker/Salt deployment instead of Vercel. See [docs/upstream-divergences.md](docs/upstream-divergences.md) for the details.
+
+- [Pi](https://github.com/badlogic/pi-mono) by [@badlogic](https://github.com/badlogic) (Mario Zechner) — the agent framework powering this project. Uses pi-agent-core, pi-ai, and pi-web-ui for the agent loop, LLM abstraction, and session storage.
 - [whimsical.ts](https://github.com/mitsuhiko/agent-stuff/blob/main/pi-extensions/whimsical.ts) by [@mitsuhiko](https://github.com/mitsuhiko) (Armin Ronacher) — the rotating "Working…" messages are adapted from his Pi extension, rewritten for a spreadsheet/finance audience.
 
 ## License
 
-[MIT](LICENSE) © Thomas Mustier
+[MIT](LICENSE) © Thomas Mustier, with modifications by netzbegruenung
