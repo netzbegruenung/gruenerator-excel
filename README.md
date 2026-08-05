@@ -58,7 +58,7 @@ Deployed at `https://excel.gruenerator.eu`. See [DEPLOYMENT.md](DEPLOYMENT.md) f
 ## Install
 
 1. Download [`manifest.prod.xml`](https://excel.gruenerator.eu/manifest.prod.xml)
-2. Add it to Excel — see [**install guide**](docs/install.md) for step-by-step instructions (macOS + Windows)
+2. Add it to Excel — see [**install guide**](docs/install.md) for step-by-step instructions (macOS + Windows), or [**Installationsanleitung auf Deutsch**](docs/install.de.md)
 3. Click **Open Grünerator** in the ribbon
 4. Sign in with your Grünerator account, or configure a different provider/gateway in `/settings`
 5. Start chatting — try `What sheets do I have?` or `Summarize my current selection`
@@ -237,6 +237,7 @@ Users install by downloading `manifest.prod.xml` and uploading it in Excel — t
 |---|---|
 | [DEPLOYMENT.md](DEPLOYMENT.md) | Grünerator-specific rollout: hosting, CORS/CSP allowlists, Salt states, API keys |
 | [docs/install.md](docs/install.md) | Non-technical install guide |
+| [docs/install.de.md](docs/install.de.md) | Installationsanleitung (Deutsch) |
 | [docs/upstream-divergences.md](docs/upstream-divergences.md) | Where this fork intentionally diverges from upstream Pi behavior |
 | [docs/upstream-sync.md](docs/upstream-sync.md) | How new commits on tmustier/pi-for-excel get triaged and ported |
 | [docs/extensions.md](docs/extensions.md) | Extension authoring guide |
