@@ -21,7 +21,7 @@ jobs:
       packages: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Erst die Pruefungen, dann das Image. Ein Build, der die CSP-Parität
       # verletzt, darf gar nicht erst in der Registry landen — der Fehler
