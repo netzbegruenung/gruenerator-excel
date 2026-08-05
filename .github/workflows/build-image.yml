@@ -26,7 +26,7 @@ jobs:
       # Erst die Pruefungen, dann das Image. Ein Build, der die CSP-Parität
       # verletzt, darf gar nicht erst in der Registry landen — der Fehler
       # zeigte sich sonst erst beim Rollout.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
