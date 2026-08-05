@@ -12,16 +12,16 @@
   <DefaultLocale>de-DE</DefaultLocale>
   <DisplayName DefaultValue="Grünerator für Excel" />
   <Description DefaultValue="KI-Seitenleiste für Excel. Betrieben mit Grünerator." />
-  <IconUrl DefaultValue="https://pi-for-excel.vercel.app/assets/icon-32.png" />
-  <HighResolutionIconUrl DefaultValue="https://pi-for-excel.vercel.app/assets/icon-80.png" />
-  <SupportUrl DefaultValue="https://github.com/tmustier/pi-for-excel" />
+  <IconUrl DefaultValue="https://excel.gruenerator.eu/assets/icon-32.png" />
+  <HighResolutionIconUrl DefaultValue="https://excel.gruenerator.eu/assets/icon-80.png" />
+  <SupportUrl DefaultValue="https://github.com/netzbegruenung/gruenerator-excel/issues/new/choose" />
 
   <Hosts>
     <Host Name="Workbook" />
   </Hosts>
 
   <DefaultSettings>
-    <SourceLocation DefaultValue="https://pi-for-excel.vercel.app/src/taskpane.html" />
+    <SourceLocation DefaultValue="https://excel.gruenerator.eu/src/taskpane.html" />
   </DefaultSettings>
 
   <Permissions>ReadWriteDocument</Permissions>
@@ -64,12 +64,12 @@
 
     <Resources>
       <bt:Images>
-        <bt:Image id="Icon16" DefaultValue="https://pi-for-excel.vercel.app/assets/icon-16.png" />
-        <bt:Image id="Icon32" DefaultValue="https://pi-for-excel.vercel.app/assets/icon-32.png" />
-        <bt:Image id="Icon80" DefaultValue="https://pi-for-excel.vercel.app/assets/icon-80.png" />
+        <bt:Image id="Icon16" DefaultValue="https://excel.gruenerator.eu/assets/icon-16.png" />
+        <bt:Image id="Icon32" DefaultValue="https://excel.gruenerator.eu/assets/icon-32.png" />
+        <bt:Image id="Icon80" DefaultValue="https://excel.gruenerator.eu/assets/icon-80.png" />
       </bt:Images>
       <bt:Urls>
-        <bt:Url id="TaskpaneUrl" DefaultValue="https://pi-for-excel.vercel.app/src/taskpane.html" />
+        <bt:Url id="TaskpaneUrl" DefaultValue="https://excel.gruenerator.eu/src/taskpane.html" />
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="GroupLabel" DefaultValue="Grünerator" />

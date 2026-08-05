@@ -14,7 +14,7 @@
   <Description DefaultValue="KI-Seitenleiste für Excel. Betrieben mit Grünerator." />
   <IconUrl DefaultValue="https://localhost:3141/assets/icon-32.png" />
   <HighResolutionIconUrl DefaultValue="https://localhost:3141/assets/icon-80.png" />
-  <SupportUrl DefaultValue="https://github.com/tmustier/pi-for-excel/issues/new/choose" />
+  <SupportUrl DefaultValue="https://github.com/netzbegruenung/gruenerator-excel/issues/new/choose" />
 
   <Hosts>
     <Host Name="Workbook" />
