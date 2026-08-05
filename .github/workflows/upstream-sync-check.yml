@@ -1,0 +1,93 @@
+name: Upstream sync check
+
+# This repo has no shared git history with tmustier/pi-for-excel (unrelated
+# histories — see docs/upstream-sync.md), so `git merge`/`gh repo sync`
+# against it cannot work. Instead this watches upstream/main for new commits
+# past the last-reviewed baseline in .github/upstream-sync-state.txt and
+# files a tracking issue for a human to triage and port via a normal,
+# CI-checked PR.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # weekly, Monday 06:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  issues: write
+  contents: read
+
+concurrency:
+  group: upstream-sync-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Ensure tracking label exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create upstream-sync \
+            --color "0E8A16" \
+            --description "New commits on tmustier/pi-for-excel awaiting triage" \
+            --force
+
+      - name: Skip if a tracking issue is already open
+        id: existing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          count=$(gh issue list --label upstream-sync --state open --json number --jq 'length')
+          echo "open=$count" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch upstream
+        if: steps.existing.outputs.open == '0'
+        run: |
+          git remote add upstream https://github.com/tmustier/pi-for-excel.git
+          git fetch upstream main
+
+      - name: Diff against last-reviewed baseline
+        if: steps.existing.outputs.open == '0'
+        id: diff
+        run: |
+          baseline="$(cat .github/upstream-sync-state.txt | tr -d '[:space:]')"
+          log="$(git log "${baseline}..upstream/main" --pretty=format:'- %h %s (%an, %ad)' --date=short)"
+          {
+            echo "log<<EOF"
+            echo "$log"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "count=$(git rev-list "${baseline}..upstream/main" --count)" >> "$GITHUB_OUTPUT"
+          echo "head=$(git rev-parse upstream/main)" >> "$GITHUB_OUTPUT"
+          echo "baseline=$baseline" >> "$GITHUB_OUTPUT"
+
+      - name: File tracking issue
+        if: steps.existing.outputs.open == '0' && steps.diff.outputs.count != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cat > /tmp/body.md <<BODY
+          [tmustier/pi-for-excel](https://github.com/tmustier/pi-for-excel) has ${{ steps.diff.outputs.count }} commit(s) past our last-reviewed baseline:
+
+          [Compare ${{ steps.diff.outputs.baseline }}...${{ steps.diff.outputs.head }}](https://github.com/tmustier/pi-for-excel/compare/${{ steps.diff.outputs.baseline }}...${{ steps.diff.outputs.head }})
+
+          ${{ steps.diff.outputs.log }}
+
+          ### How to triage
+          1. Read each commit; check against [docs/upstream-divergences.md](https://github.com/${{ github.repository }}/blob/gruenerator/docs/upstream-divergences.md) for anything that conflicts with an intentional divergence.
+          2. Port the relevant changes in a normal branch + PR (goes through CI like any other change) — this repo has unrelated git history from upstream, so cherry-pick/merge won't apply cleanly; re-implement the diff by hand.
+          3. Once triaged (ported or explicitly skipped with a reason), update \`.github/upstream-sync-state.txt\` to \`${{ steps.diff.outputs.head }}\` in that same PR.
+          4. Close this issue.
+
+          This issue was filed automatically by [upstream-sync-check.yml](https://github.com/${{ github.repository }}/blob/gruenerator/.github/workflows/upstream-sync-check.yml) and will not be duplicated while an \`upstream-sync\` issue stays open.
+          BODY
+          gh issue create \
+            --title "Upstream sync: ${{ steps.diff.outputs.count }} new commit(s) on tmustier/pi-for-excel" \
+            --label upstream-sync \
+            --body-file /tmp/body.md
