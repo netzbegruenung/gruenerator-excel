@@ -238,6 +238,7 @@ Users install by downloading `manifest.prod.xml` and uploading it in Excel — t
 | [DEPLOYMENT.md](DEPLOYMENT.md) | Grünerator-specific rollout: hosting, CORS/CSP allowlists, Salt states, API keys |
 | [docs/install.md](docs/install.md) | Non-technical install guide |
 | [docs/upstream-divergences.md](docs/upstream-divergences.md) | Where this fork intentionally diverges from upstream Pi behavior |
+| [docs/upstream-sync.md](docs/upstream-sync.md) | How new commits on tmustier/pi-for-excel get triaged and ported |
 | [docs/extensions.md](docs/extensions.md) | Extension authoring guide |
 | [docs/integrations-external-tools.md](docs/integrations-external-tools.md) | Web Search + MCP integration setup |
 | [docs/security-threat-model.md](docs/security-threat-model.md) | Security threat model |

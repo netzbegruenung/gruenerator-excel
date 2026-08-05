@@ -2,9 +2,9 @@ name: Dependency Review
 
 on:
   pull_request:
-    branches: [main]
+    branches: [gruenerator]
   push:
-    branches: [main]
+    branches: [gruenerator]
 
 permissions:
   contents: read
